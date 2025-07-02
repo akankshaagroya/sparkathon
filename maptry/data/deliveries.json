@@ -1,0 +1,112 @@
+[
+  {
+    "id": 100,
+    "location": [
+      18.99387158225783,
+      72.71928459306035
+    ],
+    "demand": 12,
+    "time_window_start": "12:00",
+    "time_window_end": "17:00",
+    "priority": 3
+  },
+  {
+    "id": 101,
+    "location": [
+      18.99153322626957,
+      72.98451248810403
+    ],
+    "demand": 12,
+    "time_window_start": "14:00",
+    "time_window_end": "17:00",
+    "priority": 2
+  },
+  {
+    "id": 102,
+    "location": [
+      19.065347733689112,
+      72.91973874735285
+    ],
+    "demand": 20,
+    "time_window_start": "10:00",
+    "time_window_end": "15:00",
+    "priority": 2
+  },
+  {
+    "id": 103,
+    "location": [
+      19.046979115225398,
+      72.87301510077702
+    ],
+    "demand": 21,
+    "time_window_start": "13:00",
+    "time_window_end": "17:00",
+    "priority": 3
+  },
+  {
+    "id": 104,
+    "location": [
+      19.029055861039655,
+      72.77631951332239
+    ],
+    "demand": 6,
+    "time_window_start": "12:00",
+    "time_window_end": "17:00",
+    "priority": 3
+  },
+  {
+    "id": 105,
+    "location": [
+      19.051596095560548,
+      72.90594048064646
+    ],
+    "demand": 25,
+    "time_window_start": "10:00",
+    "time_window_end": "12:00",
+    "priority": 1
+  },
+  {
+    "id": 106,
+    "location": [
+      19.17457754947662,
+      72.81308420591641
+    ],
+    "demand": 9,
+    "time_window_start": "14:00",
+    "time_window_end": "17:00",
+    "priority": 1
+  },
+  {
+    "id": 107,
+    "location": [
+      19.06800250555504,
+      72.90308810144406
+    ],
+    "demand": 6,
+    "time_window_start": "11:00",
+    "time_window_end": "16:00",
+    "priority": 3
+  },
+  {
+    "id": 108,
+    "location": [
+      19.075109982587065,
+      72.89610664984026
+    ],
+    "demand": 10,
+    "time_window_start": "13:00",
+    "time_window_end": "16:00",
+    "priority": 1
+  },
+  {
+    "id": 109,
+    "location": [
+      19.032581843485442,
+      72.88333364382713
+    ],
+    "demand": 10,
+    "time_window_start": "14:00",
+    "time_window_end": "17:00",
+    "priority": 1
+  }
+]

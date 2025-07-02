@@ -1,0 +1,75 @@
+{
+  "optimization": {
+    "optimization_summary": {
+      "total_distance_km": 102.43565004922507,
+      "total_time_hours": 2.560891251230627,
+      "total_demand": 131,
+      "trucks_utilized": 3,
+      "trucks_available": 3,
+      "utilization_rate": "100.0%"
+    },
+    "routes": [
+      {
+        "truck_id": 0,
+        "deliveries": 1,
+        "distance_km": 12.215235226946085,
+        "time_hours": 0.30538088067365216,
+        "demand": 9
+      },
+      {
+        "truck_id": 1,
+        "deliveries": 2,
+        "distance_km": 35.070912548663436,
+        "time_hours": 0.876772813716586,
+        "demand": 18
+      },
+      {
+        "truck_id": 2,
+        "deliveries": 7,
+        "distance_km": 55.14950227361557,
+        "time_hours": 1.3787375568403895,
+        "demand": 104
+      }
+    ]
+  },
+  "eta_summary": {
+    "summary": {
+      "total_deliveries": 10,
+      "total_distance_km": 85.04002322575145,
+      "total_travel_time_hours": 2.1260005806437863,
+      "earliest_delivery": "2025-07-02T11:00:00Z",
+      "latest_delivery": "2025-07-02T14:49:02.806929Z",
+      "delivery_window_hours": 3.817446369166667
+    },
+    "trucks": {
+      "0": {
+        "deliveries": 1,
+        "distance_km": 12.215235226946085,
+        "travel_time_hours": 0.3053808806736521,
+        "first_delivery": "2025-07-02T14:00:00Z",
+        "last_delivery": "2025-07-02T14:00:00Z"
+      },
+      "1": {
+        "deliveries": 2,
+        "distance_km": 18.59098154892267,
+        "travel_time_hours": 0.46477453872306673,
+        "first_delivery": "2025-07-02T12:00:00Z",
+        "last_delivery": "2025-07-02T12:18:57.404968Z"
+      },
+      "2": {
+        "deliveries": 7,
+        "distance_km": 54.2338064498827,
+        "travel_time_hours": 1.3558451612470677,
+        "first_delivery": "2025-07-02T11:00:00Z",
+        "last_delivery": "2025-07-02T14:49:02.806929Z"
+      }
+    }
+  },
+  "generation_timestamp": "2025-07-02T16:32:57.852206",
+  "parameters": {
+    "minimize_time": true,
+    "start_time": "09:00",
+    "trucks_count": 3,
+    "delivery_points_count": 10
+  }
+}

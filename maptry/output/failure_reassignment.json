@@ -1,0 +1,40 @@
+{
+  "reassigned_points": [
+    101,
+    100,
+    103
+  ],
+  "updated_routes": {
+    "1": [
+      1,
+      0,
+      4,
+      2,
+      5,
+      3
+    ]
+  },
+  "summary": {
+    "timestamp": "2025-07-02T16:15:39.248930",
+    "unvisited_points_count": 3,
+    "unvisited_point_ids": [
+      101,
+      100,
+      103
+    ],
+    "affected_trucks": [
+      1
+    ],
+    "reassignment_details": {
+      "1": {
+        "new_deliveries_count": 3,
+        "new_delivery_indices": [
+          1,
+          0,
+          3
+        ]
+      }
+    },
+    "total_reassigned_deliveries": 3
+  }
+}

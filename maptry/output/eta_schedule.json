@@ -1,0 +1,118 @@
+{
+  "0": [
+    {
+      "point_id": 106,
+      "coordinates": [
+        19.17457754947662,
+        72.81308420591641
+      ],
+      "eta": "2025-07-02T14:00:00Z",
+      "distance_from_previous_m": 12215.235226946084,
+      "travel_time_minutes": 18.322852840419127,
+      "arrival_time_seconds": 50400
+    }
+  ],
+  "1": [
+    {
+      "point_id": 104,
+      "coordinates": [
+        19.029055861039655,
+        72.77631951332239
+      ],
+      "eta": "2025-07-02T12:00:00Z",
+      "distance_from_previous_m": 9286.481901098063,
+      "travel_time_minutes": 13.929722851647094,
+      "arrival_time_seconds": 43200
+    },
+    {
+      "point_id": 100,
+      "coordinates": [
+        18.99387158225783,
+        72.71928459306035
+      ],
+      "eta": "2025-07-02T12:18:57.404968Z",
+      "distance_from_previous_m": 9304.499647824608,
+      "travel_time_minutes": 13.956749471736913,
+      "arrival_time_seconds": 44337
+    }
+  ],
+  "2": [
+    {
+      "point_id": 107,
+      "coordinates": [
+        19.06800250555504,
+        72.90308810144406
+      ],
+      "eta": "2025-07-02T11:00:00Z",
+      "distance_from_previous_m": 12572.916606184133,
+      "travel_time_minutes": 18.8593749092762,
+      "arrival_time_seconds": 39600
+    },
+    {
+      "point_id": 105,
+      "coordinates": [
+        19.051596095560548,
+        72.90594048064646
+      ],
+      "eta": "2025-07-02T11:08:35.364234Z",
+      "distance_from_previous_m": 2392.935935831289,
+      "travel_time_minutes": 3.5894039037469336,
+      "arrival_time_seconds": 40115
+    },
+    {
+      "point_id": 102,
+      "coordinates": [
+        19.065347733689112,
+        72.91973874735285
+      ],
+      "eta": "2025-07-02T11:17:41.520736Z",
+      "distance_from_previous_m": 2735.072239538309,
+      "travel_time_minutes": 4.102608359307464,
+      "arrival_time_seconds": 40661
+    },
+    {
+      "point_id": 101,
+      "coordinates": [
+        18.99153322626957,
+        72.98451248810403
+      ],
+      "eta": "2025-07-02T14:00:00Z",
+      "distance_from_previous_m": 13835.0269170055,
+      "travel_time_minutes": 20.75254037550825,
+      "arrival_time_seconds": 50400
+    },
+    {
+      "point_id": 109,
+      "coordinates": [
+        19.032581843485442,
+        72.88333364382713
+      ],
+      "eta": "2025-07-02T14:27:34.992959Z",
+      "distance_from_previous_m": 15055.477317521816,
+      "travel_time_minutes": 22.583215976282723,
+      "arrival_time_seconds": 52054
+    },
+    {
+      "point_id": 103,
+      "coordinates": [
+        19.046979115225398,
+        72.87301510077702
+      ],
+      "eta": "2025-07-02T14:36:20.642870Z",
+      "distance_from_previous_m": 2507.2212278320458,
+      "travel_time_minutes": 3.760831841748069,
+      "arrival_time_seconds": 52580
+    },
+    {
+      "point_id": 108,
+      "coordinates": [
+        19.075109982587065,
+        72.89610664984026
+      ],
+      "eta": "2025-07-02T14:49:02.806929Z",
+      "distance_from_previous_m": 5135.15620596961,
+      "travel_time_minutes": 7.702734308954415,
+      "arrival_time_seconds": 53342
+    }
+  ]
+}
