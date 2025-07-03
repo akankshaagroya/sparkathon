@@ -1,0 +1,854 @@
+{
+  "timestamp": 1751507961,
+  "datetime": "2025-07-03T07:29:22.586442",
+  "data_source": "Real dataset from dataset/output/",
+  "total_trucks": 100,
+  "failed_trucks_count": 35,
+  "successful_rescues": 35,
+  "operations": [
+    {
+      "rescue": true,
+      "fromTruck": "TRUCK_095",
+      "toTruck": "TRUCK_058",
+      "etaPreserved": false,
+      "moneySaved": 1460,
+      "itemsTransferred": [
+        "vegetables",
+        "dairy",
+        "ice_cream",
+        "meat",
+        "rice",
+        "fruit",
+        "wheat",
+        "frozen_goods",
+        "beverages",
+        "milk"
+      ],
+      "timestamp": 1751507961,
+      "rescueDetails": {
+        "failureReasons": [
+          "Temperature too high: 8.8\u00b0C"
+        ],
+        "rescueDistance": 269.07,
+        "rescueETA": 403.61,
+        "rescueScore": -10.43
+      }
+    },
+    {
+      "rescue": true,
+      "fromTruck": "TRUCK_046",
+      "toTruck": "TRUCK_096",
+      "etaPreserved": false,
+      "moneySaved": 1460,
+      "itemsTransferred": [
+        "vegetables",
+        "dairy",
+        "cotton",
+        "sugarcane",
+        "ice_cream",
+        "meat",
+        "fruit",
+        "frozen_goods",
+        "beverages",
+        "milk"
+      ],
+      "timestamp": 1751507961,
+      "rescueDetails": {
+        "failureReasons": [
+          "Temperature too high: 8.19\u00b0C"
+        ],
+        "rescueDistance": 103.49,
+        "rescueETA": 155.23,
+        "rescueScore": -2.67
+      }
+    },
+    {
+      "rescue": true,
+      "fromTruck": "TRUCK_073",
+      "toTruck": "TRUCK_030",
+      "etaPreserved": false,
+      "moneySaved": 1385,
+      "itemsTransferred": [
+        "vegetables",
+        "dairy",
+        "meat",
+        "rice",
+        "fruit",
+        "wheat",
+        "frozen_goods",
+        "milk"
+      ],
+      "timestamp": 1751507961,
+      "rescueDetails": {
+        "failureReasons": [
+          "Temperature too high: 22.32\u00b0C"
+        ],
+        "rescueDistance": 39.03,
+        "rescueETA": 58.54,
+        "rescueScore": 0.51
+      }
+    },
+    {
+      "rescue": true,
+      "fromTruck": "TRUCK_084",
+      "toTruck": "TRUCK_052",
+      "etaPreserved": false,
+      "moneySaved": 1385,
+      "itemsTransferred": [
+        "vegetables",
+        "dairy",
+        "cotton",
+        "sugarcane",
+        "meat",
+        "fruit",
+        "frozen_goods",
+        "milk"
+      ],
+      "timestamp": 1751507961,
+      "rescueDetails": {
+        "failureReasons": [
+          "Temperature too high: 8.27\u00b0C"
+        ],
+        "rescueDistance": 45.53,
+        "rescueETA": 68.29,
+        "rescueScore": 0.55
+      }
+    },
+    {
+      "rescue": true,
+      "fromTruck": "TRUCK_065",
+      "toTruck": "TRUCK_022",
+      "etaPreserved": false,
+      "moneySaved": 1235,
+      "itemsTransferred": [
+        "vegetables",
+        "dairy",
+        "jute",
+        "fish",
+        "fruit",
+        "milk"
+      ],
+      "timestamp": 1751507961,
+      "rescueDetails": {
+        "failureReasons": [
+          "Temperature too high: 17.04\u00b0C"
+        ],
+        "rescueDistance": 182.59,
+        "rescueETA": 273.88,
+        "rescueScore": -7.49
+      }
+    },
+    {
+      "rescue": true,
+      "fromTruck": "TRUCK_018",
+      "toTruck": "TRUCK_079",
+      "etaPreserved": false,
+      "moneySaved": 1235,
+      "itemsTransferred": [
+        "vegetables",
+        "dairy",
+        "jute",
+        "fish",
+        "fruit",
+        "milk"
+      ],
+      "timestamp": 1751507961,
+      "rescueDetails": {
+        "failureReasons": [
+          "Refrigeration system failed"
+        ],
+        "rescueDistance": 190.56,
+        "rescueETA": 285.84,
+        "rescueScore": -6.24
+      }
+    },
+    {
+      "rescue": true,
+      "fromTruck": "TRUCK_039",
+      "toTruck": "TRUCK_061",
+      "etaPreserved": false,
+      "moneySaved": 1180,
+      "itemsTransferred": [
+        "coconut",
+        "dairy",
+        "spices",
+        "milk"
+      ],
+      "timestamp": 1751507961,
+      "rescueDetails": {
+        "failureReasons": [
+          "Temperature too high: 21.5\u00b0C"
+        ],
+        "rescueDistance": 167.57,
+        "rescueETA": 251.35,
+        "rescueScore": -5.75
+      }
+    },
+    {
+      "rescue": true,
+      "fromTruck": "TRUCK_088",
+      "toTruck": "TRUCK_062",
+      "etaPreserved": false,
+      "moneySaved": 1110,
+      "itemsTransferred": [
+        "dairy",
+        "milk"
+      ],
+      "timestamp": 1751507961,
+      "rescueDetails": {
+        "failureReasons": [
+          "Temperature too high: 8.47\u00b0C"
+        ],
+        "rescueDistance": 66.36,
+        "rescueETA": 99.54,
+        "rescueScore": -0.32
+      }
+    },
+    {
+      "rescue": true,
+      "fromTruck": "TRUCK_009",
+      "toTruck": "TRUCK_089",
+      "etaPreserved": false,
+      "moneySaved": 1235,
+      "itemsTransferred": [
+        "vegetables",
+        "dairy",
+        "jute",
+        "fish",
+        "fruit",
+        "milk"
+      ],
+      "timestamp": 1751507961,
+      "rescueDetails": {
+        "failureReasons": [
+          "Temperature too high: 9.73\u00b0C"
+        ],
+        "rescueDistance": 176.3,
+        "rescueETA": 264.46,
+        "rescueScore": -6.56
+      }
+    },
+    {
+      "rescue": true,
+      "fromTruck": "TRUCK_034",
+      "toTruck": "TRUCK_077",
+      "etaPreserved": false,
+      "moneySaved": 1165,
+      "itemsTransferred": [
+        "vegetables",
+        "dairy",
+        "fruit",
+        "milk"
+      ],
+      "timestamp": 1751507961,
+      "rescueDetails": {
+        "failureReasons": [
+          "Temperature too high: 20.16\u00b0C"
+        ],
+        "rescueDistance": 48.36,
+        "rescueETA": 72.54,
+        "rescueScore": 1.28
+      }
+    },
+    {
+      "rescue": true,
+      "fromTruck": "TRUCK_043",
+      "toTruck": "TRUCK_082",
+      "etaPreserved": false,
+      "moneySaved": 1385,
+      "itemsTransferred": [
+        "vegetables",
+        "dairy",
+        "cotton",
+        "sugarcane",
+        "meat",
+        "fruit",
+        "frozen_goods",
+        "milk"
+      ],
+      "timestamp": 1751507961,
+      "rescueDetails": {
+        "failureReasons": [
+          "Refrigeration system failed"
+        ],
+        "rescueDistance": 194.94,
+        "rescueETA": 292.41,
+        "rescueScore": -6.99
+      }
+    },
+    {
+      "rescue": true,
+      "fromTruck": "TRUCK_091",
+      "toTruck": "TRUCK_068",
+      "etaPreserved": false,
+      "moneySaved": 1460,
+      "itemsTransferred": [
+        "vegetables",
+        "dairy",
+        "jute",
+        "fish",
+        "ice_cream",
+        "meat",
+        "fruit",
+        "frozen_goods",
+        "beverages",
+        "milk"
+      ],
+      "timestamp": 1751507961,
+      "rescueDetails": {
+        "failureReasons": [
+          "Temperature too high: 8.77\u00b0C"
+        ],
+        "rescueDistance": 204.73,
+        "rescueETA": 307.09,
+        "rescueScore": -8.06
+      }
+    },
+    {
+      "rescue": true,
+      "fromTruck": "TRUCK_025",
+      "toTruck": "TRUCK_033",
+      "etaPreserved": false,
+      "moneySaved": 1460,
+      "itemsTransferred": [
+        "vegetables",
+        "coconut",
+        "dairy",
+        "ice_cream",
+        "spices",
+        "meat",
+        "fruit",
+        "frozen_goods",
+        "beverages",
+        "milk"
+      ],
+      "timestamp": 1751507961,
+      "rescueDetails": {
+        "failureReasons": [
+          "Refrigeration system failed"
+        ],
+        "rescueDistance": 299.07,
+        "rescueETA": 448.61,
+        "rescueScore": -13.31
+      }
+    },
+    {
+      "rescue": true,
+      "fromTruck": "TRUCK_085",
+      "toTruck": "TRUCK_020",
+      "etaPreserved": false,
+      "moneySaved": 1385,
+      "itemsTransferred": [
+        "vegetables",
+        "dairy",
+        "meat",
+        "rice",
+        "fruit",
+        "wheat",
+        "frozen_goods",
+        "milk"
+      ],
+      "timestamp": 1751507961,
+      "rescueDetails": {
+        "failureReasons": [
+          "Temperature too high: 8.14\u00b0C",
+          "Refrigeration system failed"
+        ],
+        "rescueDistance": 287.45,
+        "rescueETA": 431.18,
+        "rescueScore": -11.52
+      }
+    },
+    {
+      "rescue": true,
+      "fromTruck": "TRUCK_001",
+      "toTruck": "TRUCK_090",
+      "etaPreserved": false,
+      "moneySaved": 1390,
+      "itemsTransferred": [
+        "vegetables",
+        "dairy",
+        "ice_cream",
+        "meat",
+        "fruit",
+        "frozen_goods",
+        "beverages",
+        "milk"
+      ],
+      "timestamp": 1751507961,
+      "rescueDetails": {
+        "failureReasons": [
+          "Temperature too high: 8.94\u00b0C"
+        ],
+        "rescueDistance": 154.07,
+        "rescueETA": 231.1,
+        "rescueScore": -5.0
+      }
+    },
+    {
+      "rescue": true,
+      "fromTruck": "TRUCK_078",
+      "toTruck": "TRUCK_049",
+      "etaPreserved": false,
+      "moneySaved": 1070,
+      "itemsTransferred": [
+        "coconut",
+        "spices"
+      ],
+      "timestamp": 1751507961,
+      "rescueDetails": {
+        "failureReasons": [
+          "Temperature too high: 9.4\u00b0C"
+        ],
+        "rescueDistance": 296.12,
+        "rescueETA": 444.18,
+        "rescueScore": -12.44
+      }
+    },
+    {
+      "rescue": true,
+      "fromTruck": "TRUCK_038",
+      "toTruck": "TRUCK_041",
+      "etaPreserved": false,
+      "moneySaved": 1460,
+      "itemsTransferred": [
+        "vegetables",
+        "dairy",
+        "cotton",
+        "sugarcane",
+        "ice_cream",
+        "meat",
+        "fruit",
+        "frozen_goods",
+        "beverages",
+        "milk"
+      ],
+      "timestamp": 1751507961,
+      "rescueDetails": {
+        "failureReasons": [
+          "Battery too low: 3.84%"
+        ],
+        "rescueDistance": 251.95,
+        "rescueETA": 377.92,
+        "rescueScore": -10.19
+      }
+    },
+    {
+      "rescue": true,
+      "fromTruck": "TRUCK_019",
+      "toTruck": "TRUCK_047",
+      "etaPreserved": false,
+      "moneySaved": 1385,
+      "itemsTransferred": [
+        "vegetables",
+        "coconut",
+        "dairy",
+        "spices",
+        "meat",
+        "fruit",
+        "frozen_goods",
+        "milk"
+      ],
+      "timestamp": 1751507961,
+      "rescueDetails": {
+        "failureReasons": [
+          "Temperature too high: 8.44\u00b0C"
+        ],
+        "rescueDistance": 202.7,
+        "rescueETA": 304.04,
+        "rescueScore": -7.21
+      }
+    },
+    {
+      "rescue": true,
+      "fromTruck": "TRUCK_086",
+      "toTruck": "TRUCK_007",
+      "etaPreserved": false,
+      "moneySaved": 1235,
+      "itemsTransferred": [
+        "vegetables",
+        "dairy",
+        "sugarcane",
+        "milk",
+        "fruit",
+        "cotton"
+      ],
+      "timestamp": 1751507961,
+      "rescueDetails": {
+        "failureReasons": [
+          "Temperature too high: 21.2\u00b0C"
+        ],
+        "rescueDistance": 58.76,
+        "rescueETA": 88.14,
+        "rescueScore": 0.23
+      }
+    },
+    {
+      "rescue": true,
+      "fromTruck": "TRUCK_010",
+      "toTruck": "TRUCK_032",
+      "etaPreserved": false,
+      "moneySaved": 1180,
+      "itemsTransferred": [
+        "wheat",
+        "dairy",
+        "rice",
+        "milk"
+      ],
+      "timestamp": 1751507961,
+      "rescueDetails": {
+        "failureReasons": [
+          "Temperature too high: 9.25\u00b0C"
+        ],
+        "rescueDistance": 158.12,
+        "rescueETA": 237.18,
+        "rescueScore": -5.26
+      }
+    },
+    {
+      "rescue": true,
+      "fromTruck": "TRUCK_011",
+      "toTruck": "TRUCK_066",
+      "etaPreserved": false,
+      "moneySaved": 1165,
+      "itemsTransferred": [
+        "vegetables",
+        "dairy",
+        "fruit",
+        "milk"
+      ],
+      "timestamp": 1751507961,
+      "rescueDetails": {
+        "failureReasons": [
+          "Temperature too high: 8.78\u00b0C"
+        ],
+        "rescueDistance": 131.14,
+        "rescueETA": 196.72,
+        "rescueScore": -3.73
+      }
+    },
+    {
+      "rescue": true,
+      "fromTruck": "TRUCK_013",
+      "toTruck": "TRUCK_097",
+      "etaPreserved": false,
+      "moneySaved": 1070,
+      "itemsTransferred": [
+        "wheat",
+        "rice"
+      ],
+      "timestamp": 1751507961,
+      "rescueDetails": {
+        "failureReasons": [
+          "Temperature too high: 15.74\u00b0C"
+        ],
+        "rescueDistance": 321.34,
+        "rescueETA": 482.02,
+        "rescueScore": -13.19
+      }
+    },
+    {
+      "rescue": true,
+      "fromTruck": "TRUCK_072",
+      "toTruck": "TRUCK_024",
+      "etaPreserved": false,
+      "moneySaved": 1460,
+      "itemsTransferred": [
+        "vegetables",
+        "dairy",
+        "cotton",
+        "sugarcane",
+        "ice_cream",
+        "meat",
+        "fruit",
+        "frozen_goods",
+        "beverages",
+        "milk"
+      ],
+      "timestamp": 1751507961,
+      "rescueDetails": {
+        "failureReasons": [
+          "Temperature too high: 9.54\u00b0C"
+        ],
+        "rescueDistance": 90.14,
+        "rescueETA": 135.21,
+        "rescueScore": -2.14
+      }
+    },
+    {
+      "rescue": true,
+      "fromTruck": "TRUCK_076",
+      "toTruck": "TRUCK_055",
+      "etaPreserved": false,
+      "moneySaved": 1235,
+      "itemsTransferred": [
+        "vegetables",
+        "dairy",
+        "jute",
+        "fish",
+        "fruit",
+        "milk"
+      ],
+      "timestamp": 1751507961,
+      "rescueDetails": {
+        "failureReasons": [
+          "Temperature too high: 8.89\u00b0C"
+        ],
+        "rescueDistance": 54.07,
+        "rescueETA": 81.11,
+        "rescueScore": -0.37
+      }
+    },
+    {
+      "rescue": true,
+      "fromTruck": "TRUCK_029",
+      "toTruck": "TRUCK_087",
+      "etaPreserved": false,
+      "moneySaved": 1070,
+      "itemsTransferred": [
+        "jute",
+        "fish"
+      ],
+      "timestamp": 1751507961,
+      "rescueDetails": {
+        "failureReasons": [
+          "Temperature too high: 24.57\u00b0C"
+        ],
+        "rescueDistance": 167.36,
+        "rescueETA": 251.03,
+        "rescueScore": -6.75
+      }
+    },
+    {
+      "rescue": true,
+      "fromTruck": "TRUCK_075",
+      "toTruck": "TRUCK_094",
+      "etaPreserved": false,
+      "moneySaved": 1235,
+      "itemsTransferred": [
+        "vegetables",
+        "dairy",
+        "rice",
+        "fruit",
+        "wheat",
+        "milk"
+      ],
+      "timestamp": 1751507961,
+      "rescueDetails": {
+        "failureReasons": [
+          "Temperature too high: 9.71\u00b0C"
+        ],
+        "rescueDistance": 51.47,
+        "rescueETA": 77.2,
+        "rescueScore": -0.16
+      }
+    },
+    {
+      "rescue": true,
+      "fromTruck": "TRUCK_064",
+      "toTruck": "TRUCK_002",
+      "etaPreserved": false,
+      "moneySaved": 1070,
+      "itemsTransferred": [
+        "coconut",
+        "spices"
+      ],
+      "timestamp": 1751507961,
+      "rescueDetails": {
+        "failureReasons": [
+          "Temperature too high: 16.52\u00b0C"
+        ],
+        "rescueDistance": 250.83,
+        "rescueETA": 376.24,
+        "rescueScore": -11.0
+      }
+    },
+    {
+      "rescue": true,
+      "fromTruck": "TRUCK_003",
+      "toTruck": "TRUCK_045",
+      "etaPreserved": false,
+      "moneySaved": 1460,
+      "itemsTransferred": [
+        "vegetables",
+        "coconut",
+        "dairy",
+        "ice_cream",
+        "spices",
+        "meat",
+        "fruit",
+        "frozen_goods",
+        "beverages",
+        "milk"
+      ],
+      "timestamp": 1751507961,
+      "rescueDetails": {
+        "failureReasons": [
+          "Temperature too high: 28.28\u00b0C",
+          "Refrigeration system failed"
+        ],
+        "rescueDistance": 284.58,
+        "rescueETA": 426.87,
+        "rescueScore": -12.74
+      }
+    },
+    {
+      "rescue": true,
+      "fromTruck": "TRUCK_057",
+      "toTruck": "TRUCK_021",
+      "etaPreserved": false,
+      "moneySaved": 1180,
+      "itemsTransferred": [
+        "jute",
+        "dairy",
+        "fish",
+        "milk"
+      ],
+      "timestamp": 1751507961,
+      "rescueDetails": {
+        "failureReasons": [
+          "Temperature too high: 8.77\u00b0C"
+        ],
+        "rescueDistance": 124.94,
+        "rescueETA": 187.41,
+        "rescueScore": -3.82
+      }
+    },
+    {
+      "rescue": true,
+      "fromTruck": "TRUCK_015",
+      "toTruck": "TRUCK_044",
+      "etaPreserved": false,
+      "moneySaved": 1460,
+      "itemsTransferred": [
+        "vegetables",
+        "dairy",
+        "ice_cream",
+        "meat",
+        "rice",
+        "fruit",
+        "wheat",
+        "frozen_goods",
+        "beverages",
+        "milk"
+      ],
+      "timestamp": 1751507961,
+      "rescueDetails": {
+        "failureReasons": [
+          "Temperature too high: 26.05\u00b0C",
+          "Refrigeration system failed"
+        ],
+        "rescueDistance": 134.59,
+        "rescueETA": 201.89,
+        "rescueScore": -3.43
+      }
+    },
+    {
+      "rescue": true,
+      "fromTruck": "TRUCK_004",
+      "toTruck": "TRUCK_035",
+      "etaPreserved": false,
+      "moneySaved": 1000,
+      "itemsTransferred": [],
+      "timestamp": 1751507961,
+      "rescueDetails": {
+        "failureReasons": [
+          "Temperature too high: 14.03\u00b0C"
+        ],
+        "rescueDistance": 338.1,
+        "rescueETA": 507.14,
+        "rescueScore": -14.1
+      }
+    },
+    {
+      "rescue": true,
+      "fromTruck": "TRUCK_067",
+      "toTruck": "TRUCK_050",
+      "etaPreserved": false,
+      "moneySaved": 1235,
+      "itemsTransferred": [
+        "vegetables",
+        "dairy",
+        "rice",
+        "fruit",
+        "wheat",
+        "milk"
+      ],
+      "timestamp": 1751507961,
+      "rescueDetails": {
+        "failureReasons": [
+          "Temperature too high: 9.51\u00b0C"
+        ],
+        "rescueDistance": 305.41,
+        "rescueETA": 458.11,
+        "rescueScore": -12.55
+      }
+    },
+    {
+      "rescue": true,
+      "fromTruck": "TRUCK_080",
+      "toTruck": "TRUCK_006",
+      "etaPreserved": false,
+      "moneySaved": 1180,
+      "itemsTransferred": [
+        "cotton",
+        "dairy",
+        "sugarcane",
+        "milk"
+      ],
+      "timestamp": 1751507961,
+      "rescueDetails": {
+        "failureReasons": [
+          "Temperature too high: 9.01\u00b0C"
+        ],
+        "rescueDistance": 204.0,
+        "rescueETA": 306.0,
+        "rescueScore": -7.33
+      }
+    },
+    {
+      "rescue": true,
+      "fromTruck": "TRUCK_056",
+      "toTruck": "TRUCK_037",
+      "etaPreserved": false,
+      "moneySaved": 1235,
+      "itemsTransferred": [
+        "vegetables",
+        "coconut",
+        "dairy",
+        "spices",
+        "fruit",
+        "milk"
+      ],
+      "timestamp": 1751507961,
+      "rescueDetails": {
+        "failureReasons": [
+          "Temperature too high: 14.83\u00b0C"
+        ],
+        "rescueDistance": 350.72,
+        "rescueETA": 526.09,
+        "rescueScore": -15.39
+      }
+    },
+    {
+      "rescue": true,
+      "fromTruck": "TRUCK_014",
+      "toTruck": "TRUCK_027",
+      "etaPreserved": false,
+      "moneySaved": 1110,
+      "itemsTransferred": [
+        "dairy",
+        "milk"
+      ],
+      "timestamp": 1751507961,
+      "rescueDetails": {
+        "failureReasons": [
+          "Temperature too high: 9.23\u00b0C"
+        ],
+        "rescueDistance": 388.76,
+        "rescueETA": 583.14,
+        "rescueScore": -17.27
+      }
+    }
+  ]
+}

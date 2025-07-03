@@ -1,0 +1,69 @@
+{
+  "timestamp": 1751501824,
+  "datetime": "2025-07-03T05:47:04.984194",
+  "failed_trucks_count": 3,
+  "successful_rescues": 3,
+  "operations": [
+    {
+      "rescue": true,
+      "fromTruck": "TRK_02",
+      "toTruck": "TRK_07",
+      "etaPreserved": true,
+      "moneySaved": 1105,
+      "itemsTransferred": [
+        "meat",
+        "veggies"
+      ],
+      "timestamp": 1751501824,
+      "rescueDetails": {
+        "failureReasons": [
+          "Temperature too high: 10\u00b0C"
+        ],
+        "rescueDistance": 7.24,
+        "rescueETA": 10.86,
+        "rescueScore": 6.45
+      }
+    },
+    {
+      "rescue": true,
+      "fromTruck": "TRK_03",
+      "toTruck": "TRK_06",
+      "etaPreserved": true,
+      "moneySaved": 1130,
+      "itemsTransferred": [
+        "dairy",
+        "frozen_goods"
+      ],
+      "timestamp": 1751501824,
+      "rescueDetails": {
+        "failureReasons": [
+          "Refrigeration system failed"
+        ],
+        "rescueDistance": 2.27,
+        "rescueETA": 3.41,
+        "rescueScore": 5.65
+      }
+    },
+    {
+      "rescue": true,
+      "fromTruck": "TRK_04",
+      "toTruck": "TRK_01",
+      "etaPreserved": false,
+      "moneySaved": 1105,
+      "itemsTransferred": [
+        "milk",
+        "fruit",
+        "vegetables"
+      ],
+      "timestamp": 1751501824,
+      "rescueDetails": {
+        "failureReasons": [
+          "Battery too low: 3%"
+        ],
+        "rescueDistance": 0.11,
+        "rescueETA": 0.16,
+        "rescueScore": 15.27
+      }
+    }
+  ]
+}
