@@ -1,114 +1,114 @@
 {
-  "timestamp": "2025-07-03T11:07:49.409738",
+  "timestamp": "2025-07-03T13:24:59.937085",
   "trucks": [
     {
       "id": 0,
       "start": [
-        19.04805422706962,
-        72.78706966109883
+        19.096512221031826,
+        72.89728916630929
       ],
-      "capacity": 140,
-      "speed_kmh": 48.06380102890693
+      "capacity": 89,
+      "speed_kmh": 38.37999857449484
     },
     {
       "id": 1,
       "start": [
-        18.991615631790552,
-        73.01481932906536
+        19.013980611849927,
+        72.8745283489352
       ],
-      "capacity": 140,
-      "speed_kmh": 46.6491431075394
+      "capacity": 85,
+      "speed_kmh": 37.80113057708192
     },
     {
       "id": 2,
       "start": [
-        19.097048934135817,
-        72.88688871779063
+        19.071690360930916,
+        72.8711993123083
       ],
-      "capacity": 102,
-      "speed_kmh": 47.06739576035642
+      "capacity": 107,
+      "speed_kmh": 49.77215858173752
     }
   ],
   "delivery_points": [
     {
       "id": 100,
       "location": [
-        19.04363976672577,
-        72.8525520819925
+        19.089946615509106,
+        72.84364259315441
       ],
-      "demand": 9,
-      "time_window": "14:00-17:00",
-      "priority": 3
-    },
-    {
-      "id": 101,
-      "location": [
-        19.042294178992297,
-        72.87384022894543
-      ],
-      "demand": 14,
+      "demand": 16,
       "time_window": "14:00-16:00",
       "priority": 1
     },
     {
+      "id": 101,
+      "location": [
+        19.165074415241737,
+        72.83343613493184
+      ],
+      "demand": 25,
+      "time_window": "14:00-17:00",
+      "priority": 2
+    },
+    {
       "id": 102,
       "location": [
-        19.080673700774334,
-        72.90336637190427
+        19.09700873860542,
+        72.90947714157261
       ],
-      "demand": 5,
-      "time_window": "09:00-17:00",
+      "demand": 6,
+      "time_window": "14:00-16:00",
       "priority": 2
     },
     {
       "id": 103,
       "location": [
-        18.941630961943552,
-        72.98896088122598
+        19.124422085232375,
+        72.89526874383198
       ],
-      "demand": 5,
-      "time_window": "10:00-16:00",
-      "priority": 1
+      "demand": 17,
+      "time_window": "09:00-17:00",
+      "priority": 3
     },
     {
       "id": 104,
       "location": [
-        19.13373645489891,
-        72.95116197533471
+        19.060923269591758,
+        72.82803883960173
       ],
-      "demand": 14,
-      "time_window": "11:00-13:00",
+      "demand": 16,
+      "time_window": "10:00-17:00",
       "priority": 1
     },
     {
       "id": 105,
       "location": [
-        19.058572454704095,
-        72.74147392702717
+        19.219328662815126,
+        72.9163892934144
       ],
-      "demand": 24,
-      "time_window": "11:00-16:00",
+      "demand": 13,
+      "time_window": "12:00-16:00",
       "priority": 2
     },
     {
       "id": 106,
       "location": [
-        19.101687492275914,
-        72.9801350847678
+        19.074893901563932,
+        72.87923820299514
       ],
-      "demand": 8,
-      "time_window": "13:00-17:00",
-      "priority": 2
+      "demand": 21,
+      "time_window": "14:00-16:00",
+      "priority": 1
     },
     {
       "id": 107,
       "location": [
-        19.089136885012387,
-        72.8765154520509
+        19.042154220754735,
+        72.92069743004922
       ],
-      "demand": 7,
-      "time_window": "11:00-15:00",
-      "priority": 3
+      "demand": 15,
+      "time_window": "09:00-16:00",
+      "priority": 1
     }
   ],
   "initial_routes": [
@@ -116,42 +116,41 @@
       "truck_id": 0,
       "route": [
         3,
-        1,
-        0
+        5
       ],
-      "total_distance_km": 55.91931321586022,
-      "total_time_hours": 1.3979828303965056,
-      "total_demand": 28
+      "total_distance_km": 17.985058682551152,
+      "total_time_hours": 0.44962646706377885,
+      "total_demand": 30
     },
     {
       "truck_id": 1,
       "route": [
-        5,
         4,
-        6,
-        2
+        7
       ],
-      "total_distance_km": 54.08675365712969,
-      "total_time_hours": 1.352168841428242,
-      "total_demand": 51
+      "total_distance_km": 27.94166495983296,
+      "total_time_hours": 0.6985416239958241,
+      "total_demand": 31
     },
     {
       "truck_id": 2,
       "route": [
-        7,
+        2,
         1,
-        0
+        0,
+        6,
+        5
       ],
-      "total_distance_km": 38.57670790669431,
-      "total_time_hours": 0.9644176976673579,
-      "total_demand": 7
+      "total_distance_km": 32.18601745694123,
+      "total_time_hours": 0.8046504364235307,
+      "total_demand": 68
     }
   ],
   "performance_stats": {
     "optimization_summary": {
-      "total_distance_km": 148.5827747796842,
-      "total_time_hours": 3.7145693694921054,
-      "total_demand": 86,
+      "total_distance_km": 78.11274109932535,
+      "total_time_hours": 1.9528185274831336,
+      "total_demand": 129,
       "trucks_utilized": 3,
       "trucks_available": 3,
       "utilization_rate": "100.0%"
@@ -159,24 +158,24 @@
     "routes": [
       {
         "truck_id": 0,
-        "deliveries": 3,
-        "distance_km": 55.91931321586022,
-        "time_hours": 1.3979828303965056,
-        "demand": 28
+        "deliveries": 2,
+        "distance_km": 17.985058682551152,
+        "time_hours": 0.44962646706377885,
+        "demand": 30
       },
       {
         "truck_id": 1,
-        "deliveries": 4,
-        "distance_km": 54.08675365712969,
-        "time_hours": 1.352168841428242,
-        "demand": 51
+        "deliveries": 2,
+        "distance_km": 27.94166495983296,
+        "time_hours": 0.6985416239958241,
+        "demand": 31
       },
       {
         "truck_id": 2,
-        "deliveries": 3,
-        "distance_km": 38.57670790669431,
-        "time_hours": 0.9644176976673579,
-        "demand": 7
+        "deliveries": 5,
+        "distance_km": 32.18601745694123,
+        "time_hours": 0.8046504364235307,
+        "demand": 68
       }
     ]
   }

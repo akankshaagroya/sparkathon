@@ -79,10 +79,10 @@ class RouteOptimizer:
         self._add_capacity_constraint(routing, manager, data)
         self._add_time_window_constraint(routing, manager, data)
         
-        # Set search parameters
+        # Set search parameters for better load balancing
         search_parameters = pywrapcp.DefaultRoutingSearchParameters()
         search_parameters.first_solution_strategy = (
-            routing_enums_pb2.FirstSolutionStrategy.PATH_CHEAPEST_ARC
+            routing_enums_pb2.FirstSolutionStrategy.SAVINGS
         )
         search_parameters.local_search_metaheuristic = (
             routing_enums_pb2.LocalSearchMetaheuristic.GUIDED_LOCAL_SEARCH
@@ -158,7 +158,7 @@ class RouteOptimizer:
         transit_callback_index = routing.RegisterTransitCallback(distance_callback)
         routing.SetArcCostEvaluatorOfAllVehicles(transit_callback_index)
         
-        # Add distance dimension
+        # Add distance dimension with better load balancing
         dimension_name = 'Distance'
         routing.AddDimension(
             transit_callback_index,
@@ -168,14 +168,15 @@ class RouteOptimizer:
             dimension_name
         )
         distance_dimension = routing.GetDimensionOrDie(dimension_name)
-        distance_dimension.SetGlobalSpanCostCoefficient(100)
+        # Increase coefficient to encourage more balanced routes
+        distance_dimension.SetGlobalSpanCostCoefficient(2000)
     
     def _add_capacity_constraint(self, routing, manager, data):
         """Add capacity constraint to the model."""
         def demand_callback(from_index):
             from_node = manager.IndexToNode(from_index)
             return data['demands'][from_node]
-        
+
         demand_callback_index = routing.RegisterUnaryTransitCallback(demand_callback)
         routing.AddDimensionWithVehicleCapacity(
             demand_callback_index,
@@ -184,6 +185,11 @@ class RouteOptimizer:
             True,  # start cumul to zero
             'Capacity'
         )
+        
+        # Add load balancing penalty
+        capacity_dimension = routing.GetDimensionOrDie('Capacity')
+        # Encourage more balanced load distribution
+        capacity_dimension.SetGlobalSpanCostCoefficient(1000)
     
     def _add_time_window_constraint(self, routing, manager, data):
         """Add time window constraints."""
