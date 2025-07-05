@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mumbai Cold Chain System</title>
+    <style>
+        body { 
+            font-family: Arial, sans-serif; 
+            margin: 2rem; 
+            background: white; 
+        }
+        h1 { 
+            color: #333; 
+            margin-bottom: 2rem; 
+        }
+        .links { 
+            margin: 2rem 0; 
+        }
+        .links a { 
+            display: inline-block; 
+            padding: 1rem 2rem; 
+            margin: 0.5rem; 
+            background: #007bff; 
+            color: white; 
+            text-decoration: none; 
+            border-radius: 4px; 
+        }
+        .links a:hover { 
+            background: #0056b3; 
+        }
+        .logs { 
+            background: #f8f9fa; 
+            padding: 1rem; 
+            border-radius: 4px; 
+            height: 400px; 
+            overflow-y: auto; 
+            font-family: monospace; 
+            font-size: 0.9rem;
+            border: 1px solid #ddd;
+        }
+        .trigger-section {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 1rem;
+            margin: 1rem 0 2rem 0;
+        }
+        .trigger-btn {
+            padding: 1rem;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 600;
+            text-align: center;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+        .trigger-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+        }
+        .trigger-btn small {
+            display: block;
+            font-weight: normal;
+            margin-top: 0.5rem;
+            font-size: 0.8rem;
+        }
+        .temp { background: #ff6b6b; color: white; }
+        .battery { background: #feca57; color: black; }
+        .engine { background: #ff9ff3; color: white; }
+        .gps { background: #54a0ff; color: white; }
+        .refrigeration { background: #5f27cd; color: white; }
+        .route { background: #ff6348; color: white; }
+    </style>
+</head>
+<body>
+    <h1>🚛 Mumbai Cold Chain System</h1>
+    
+    <div class="links">
+        <a href="/normal_ops" target="_blank">📍 Normal Operations + Failure Detection</a>
+        <a href="/rescue_ops" target="_blank">🚑 Rescue Operations</a>
+    </div>
+    
+    <h3>🚨 Manual Failure Triggers</h3>
+    <div class="trigger-section">
+        <button class="trigger-btn temp" onclick="triggerSpecificFailure('temperature')">
+            🌡️ Temperature Critical<br><small>Cold chain breach > 10°C</small>
+        </button>
+        <button class="trigger-btn battery" onclick="triggerSpecificFailure('battery')">
+            🔋 Battery Drain<br><small>Power critical < 5%</small>
+        </button>
+        <button class="trigger-btn engine" onclick="triggerSpecificFailure('engine')">
+            🔧 Engine Failure<br><small>Mechanical breakdown</small>
+        </button>
+        <button class="trigger-btn gps" onclick="triggerSpecificFailure('gps')">
+            📡 GPS Signal Lost<br><small>Communication error</small>
+        </button>
+        <button class="trigger-btn refrigeration" onclick="triggerSpecificFailure('refrigeration')">
+            ❄️ Refrigeration Unit<br><small>Cooling system failure</small>
+        </button>
+        <button class="trigger-btn route" onclick="triggerSpecificFailure('route')">
+            🚧 Route Blocked<br><small>Traffic obstruction</small>
+        </button>
+    </div>
+    
+    <h3>System Logs</h3>
+    <div class="logs" id="logs">
+        Loading system logs...
+    </div>
+
+    <script>
+        // Fetch and display logs
+        async function fetchLogs() {
+            try {
+                const response = await fetch('/system_logs');
+                const data = await response.json();
+                const logsDiv = document.getElementById('logs');
+                logsDiv.innerHTML = data.logs.map(log => `<div>${log}</div>`).join('');
+                logsDiv.scrollTop = logsDiv.scrollHeight;
+            } catch (error) {
+                document.getElementById('logs').innerHTML = '<div>Error loading logs</div>';
+            }
+        }
+
+        // Trigger specific failure type
+        async function triggerSpecificFailure(failureType) {
+            try {
+                const response = await fetch(`/trigger_failure/${failureType}`, { method: 'POST' });
+                const data = await response.json();
+                
+                if (data.success) {
+                    console.log(`✅ ${failureType} failure triggered:`, data.message);
+                    // Refresh logs to show the failure
+                    setTimeout(fetchLogs, 1000);
+                } else {
+                    console.log(`❌ Failed to trigger ${failureType}:`, data.message);
+                }
+            } catch (error) {
+                console.log(`❌ Error triggering ${failureType}:`, error);
+            }
+        }
+
+        // Update logs every 3 seconds
+        fetchLogs();
+        setInterval(fetchLogs, 3000);
+    </script>
+</body>
+</html>

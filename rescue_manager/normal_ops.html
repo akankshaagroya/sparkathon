@@ -1,0 +1,719 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mumbai Cold Chain - Normal Operations & Failure Detection</title>
+    
+    <!-- Leaflet CSS -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; }
+        body { background: #f0f2f5; }
+        
+        .header {
+            background: linear-gradient(135deg, #2c3e50 0%, #3498db 100%);
+            color: white;
+            padding: 1.5rem;
+            text-align: center;
+        }
+        
+        .header h1 { font-size: 2rem; margin-bottom: 0.5rem; }
+        
+        .status-banner {
+            background: #27ae60;
+            color: white;
+            padding: 0.75rem;
+            text-align: center;
+            font-weight: 600;
+        }
+        
+        .container {
+            display: grid;
+            grid-template-columns: 3fr 1fr;
+            height: calc(100vh - 140px);
+            gap: 1rem;
+            padding: 1rem;
+        }
+        
+        .map-section {
+            background: white;
+            border-radius: 12px;
+            overflow: hidden;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+            position: relative;
+        }
+        
+        .map-header {
+            background: #34495e;
+            color: white;
+            padding: 1rem;
+            text-align: center;
+            font-weight: 600;
+        }
+        
+        #map {
+            height: calc(100% - 60px);
+            width: 100%;
+        }
+        
+        .controls {
+            position: absolute;
+            top: 80px;
+            right: 10px;
+            z-index: 1000;
+        }
+        
+        .btn {
+            padding: 0.5rem 1rem;
+            margin: 0.25rem;
+            border: none;
+            border-radius: 6px;
+            font-weight: 600;
+            cursor: pointer;
+            display: block;
+            width: 150px;
+        }
+        
+        .btn-danger { background: #dc3545; color: white; }
+        .btn-primary { background: #007bff; color: white; }
+        .btn-success { background: #28a745; color: white; }
+        .btn:hover { opacity: 0.9; }
+        
+        .sidebar {
+            background: white;
+            border-radius: 12px;
+            padding: 1rem;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+            overflow-y: auto;
+        }
+        
+        .truck-list {
+            margin-bottom: 1rem;
+        }
+        
+        .truck-item {
+            background: #f8f9fa;
+            margin: 0.5rem 0;
+            padding: 0.75rem;
+            border-radius: 6px;
+            border-left: 4px solid #28a745;
+        }
+        
+        .truck-item.failed { border-left-color: #dc3545; background: #fdf2f2; }
+        .truck-item.rescuing { border-left-color: #ffc107; background: #fffbf0; }
+        
+        .truck-id { font-weight: bold; margin-bottom: 0.25rem; }
+        .truck-stats { font-size: 0.85rem; color: #000000; }
+        
+        .legend {
+            background: rgba(255,255,255,0.9);
+            position: absolute;
+            bottom: 10px;
+            left: 10px;
+            padding: 10px;
+            border-radius: 6px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+            z-index: 1000;
+            font-size: 0.85rem;
+        }
+        
+        .legend-item {
+            display: flex;
+            align-items: center;
+            margin: 2px 0;
+        }
+        
+        .legend-dot {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            margin-right: 6px;
+        }
+        
+        .operational { background: #28a745; }
+        .failed { background: #dc3545; }
+        .rescuing { background: #ffc107; }
+        
+        .loading {
+            text-align: center;
+            padding: 2rem;
+            color: #6c757d;
+        }
+
+        .failure-alert {
+            background: #f8d7da;
+            border: 1px solid #f5c6cb;
+            color: #721c24;
+            padding: 1rem;
+            border-radius: 6px;
+            margin: 1rem 0;
+            font-weight: 600;
+        }
+        
+        /* 🎨 BEAUTIFUL ROUTE ANIMATIONS */
+        .delivery-route {
+            animation: routeFlow 3s linear infinite;
+        }
+        
+        @keyframes routeFlow {
+            0% { stroke-dashoffset: 0; }
+            100% { stroke-dashoffset: 30; }
+        }
+        
+        @keyframes waypointPulse {
+            0% { transform: scale(1); opacity: 0.8; }
+            50% { transform: scale(1.3); opacity: 1; }
+            100% { transform: scale(1); opacity: 0.8; }
+        }
+        
+        /* Route legend hover effects */
+        #route-legend:hover {
+            background: rgba(255,255,255,1) !important;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.3) !important;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>🚛 Mumbai Cold Chain - Normal Operations</h1>
+        <p>Live Fleet Monitoring & Automatic Failure Detection</p>
+    </div>
+    
+    <div class="status-banner" id="status">
+        🔍 Monitoring Mumbai fleet for temperature & battery critical alerts...
+    </div>
+    
+    <div class="container">
+        <div class="map-section">
+            <div class="map-header">
+                📍 Live Mumbai Fleet - Normal Operations & Failure Detection
+            </div>
+            
+            <div class="controls">
+                <button class="btn btn-danger" onclick="triggerFailure()">⚠️ Demo Failure</button>
+                <button class="btn btn-success" onclick="openRescueView()">🚑 View Rescues</button>
+                <button class="btn btn-primary" onclick="refreshMap()">🔄 Refresh</button>
+            </div>
+            
+            <div class="legend">
+                <div style="font-weight: bold; margin-bottom: 5px;">Fleet Status</div>
+                <div class="legend-item">
+                    <div class="legend-dot operational"></div>
+                    <span>Operational</span>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-dot failed"></div>
+                    <span>Failed - Needs Rescue</span>
+                </div>
+            </div>
+            
+            <div id="map">
+                <div class="loading">
+                    🗺️ Loading Mumbai operations map...<br>
+                    <small>Connecting to live fleet data...</small>
+                </div>
+            </div>
+        </div>
+        
+        <div class="sidebar">
+            <h3>🚛 Live Fleet Status</h3>
+            <div class="truck-list" id="truck-list">
+                <div class="loading">Loading truck data...</div>
+            </div>
+
+            <div id="failure-alerts"></div>
+            
+            <h3>🔍 System Activity</h3>
+            <div id="logs" style="font-family: monospace; font-size: 0.8rem; max-height: 200px; overflow-y: auto; background: #f8f9fa; padding: 0.5rem; border-radius: 4px;">
+                <div>System initializing...</div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Leaflet JavaScript -->
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    
+    <script>
+        let map;
+        let trucks = {};
+        let markers = {};
+        let routeLines = {}; // Track route lines for each truck
+        
+        // 🎨 PERFECTLY DISTINCT COLORS - Only 7 colors for 4 trucks = 1000% distinction!
+        const routeColors = [
+            '#FF0000', // Pure Red
+            '#00FF00', // Pure Green  
+            '#0000FF', // Pure Blue
+            '#FF8000', // Pure Orange
+            '#FF00FF', // Pure Magenta
+            '#00FFFF', // Pure Cyan
+            '#8000FF'  // Pure Purple
+        ];
+        
+        // Keep track of truck colors to ensure consistency
+        let truckColorAssignments = {};
+        
+        // Function to get route color for a truck - Dynamic assignment ensuring distinct colors
+        function getTruckRouteColor(truckId, allTrucks = []) {
+            // If we already assigned a color to this truck, use it
+            if (truckColorAssignments[truckId]) {
+                console.log(`🎨 Truck ${truckId} using existing assigned color: ${truckColorAssignments[truckId]}`);
+                return truckColorAssignments[truckId];
+            }
+            
+            // Get all operational truck IDs and sort them for consistent assignment
+            const operationalTruckIds = allTrucks
+                .filter(truck => truck.status === 'operational')
+                .map(truck => truck.truck_id)
+                .sort(); // Sort to ensure consistent color assignment
+            
+            // Find the index of this truck in the sorted list
+            const truckIndex = operationalTruckIds.indexOf(truckId);
+            
+            // Assign color based on the truck's position in the list (0-6, wrapping if needed)
+            const colorIndex = truckIndex >= 0 ? truckIndex % routeColors.length : 0;
+            const color = routeColors[colorIndex];
+            
+            // Store the assignment for consistency
+            truckColorAssignments[truckId] = color;
+            
+            console.log(`🎨 Truck ${truckId} (index ${truckIndex}) assigned NEW color: ${color} (colorIndex: ${colorIndex})`);
+            console.log(`📊 Operational trucks: ${operationalTruckIds.join(', ')}`);
+            return color;
+        }
+        
+        // 🎨 UPDATE ROUTE LEGEND with active truck routes
+        function updateRouteLegend(trucks) {
+            // Find existing route legend or create one
+            let routeLegend = document.getElementById('route-legend');
+            if (!routeLegend) {
+                routeLegend = document.createElement('div');
+                routeLegend.id = 'route-legend';
+                routeLegend.style.cssText = `
+                    position: absolute;
+                    bottom: 80px;
+                    right: 10px;
+                    background: rgba(255,255,255,0.95);
+                    padding: 10px;
+                    border-radius: 8px;
+                    box-shadow: 0 2px 10px rgba(0,0,0,0.2);
+                    z-index: 1000;
+                    font-size: 0.8rem;
+                    max-height: 250px;
+                    overflow-y: auto;
+                    min-width: 220px;
+                `;
+                document.querySelector('.map-section').appendChild(routeLegend);
+            }
+            
+            // Filter operational trucks with routes
+            const trucksWithRoutes = trucks.filter(truck => 
+                truck.status === 'operational' && 
+                truck.intended_route && 
+                truck.intended_route.length > 1
+            );
+            
+            if (trucksWithRoutes.length === 0) {
+                routeLegend.innerHTML = `
+                    <div style="font-weight: bold; margin-bottom: 5px; color: #6c757d;">📍 Delivery Routes</div>
+                    <div style="color: #6c757d; font-style: italic;">No active routes</div>
+                `;
+                return;
+            }
+            
+            let legendHTML = `
+                <div style="font-weight: bold; margin-bottom: 8px; color: #2c3e50;">📍 Active Delivery Routes</div>
+            `;
+            
+            trucksWithRoutes.forEach(truck => {
+                const routeColor = getTruckRouteColor(truck.truck_id, trucks);
+                const deliveries = calculateDeliveries(truck);
+                legendHTML += `
+                    <div style="display: flex; align-items: center; margin: 4px 0; padding: 2px 0;">
+                        <div style="
+                            width: 20px; 
+                            height: 3px; 
+                            background: ${routeColor}; 
+                            margin-right: 8px;
+                            border-radius: 2px;
+                        "></div>
+                        <div style="font-size: 0.85rem;">
+                            <span style="font-weight: 600; color: #2c3e50;">${truck.truck_id}</span><br>
+                            <span style="color: #666; font-size: 0.75rem;">📦 ${deliveries} deliveries</span>
+                        </div>
+                        <div style="
+                            width: 6px; 
+                            height: 6px; 
+                            background: ${routeColor}; 
+                            border-radius: 50%;
+                            margin-left: auto;
+                        "></div>
+                    </div>
+                `;
+            });
+            
+            routeLegend.innerHTML = legendHTML;
+        }
+        
+        // Initialize map
+        function initMap() {
+            try {
+                console.log('🗺️ Initializing normal operations map...');
+                
+                map = L.map('map').setView([19.0760, 72.8777], 11);
+                
+                L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                    attribution: '© OpenStreetMap contributors',
+                    maxZoom: 19
+                }).addTo(map);
+                
+                console.log('✅ Map initialized successfully!');
+                updateStatus('🗺️ Map loaded! Monitoring live operations...');
+                
+                // Start monitoring
+                fetchTruckData();
+                setInterval(fetchTruckData, 3000);
+                
+            } catch (error) {
+                console.error('❌ Map initialization failed:', error);
+                updateStatus('❌ Map failed to load. Retrying...');
+                setTimeout(initMap, 2000);
+            }
+        }
+        
+        // Fetch live truck data
+        async function fetchTruckData() {
+            try {
+                const response = await fetch('/truck_status');
+                const truckData = await response.json();
+                
+                updateTruckDisplay(truckData);
+                updateMapMarkers(truckData);
+                updateRouteLegend(truckData); // 🎨 Update route color legend
+                
+                // Check for failures
+                const failed = truckData.filter(t => t.status === 'failed');
+                if (failed.length > 0) {
+                    showFailureAlert(failed);
+                }
+                
+                updateStatus(`🟢 Live: ${truckData.length} trucks | Operational: ${truckData.filter(t => t.status === 'operational').length} | Failed: ${failed.length}`);
+                
+            } catch (error) {
+                console.log('Using demo data...');
+                const demoData = generateDemoData();
+                updateTruckDisplay(demoData);
+                updateMapMarkers(demoData);
+                updateRouteLegend(demoData); // 🎨 Update route color legend for demo
+                updateStatus('📊 Demo mode active');
+            }
+        }
+        
+        // Show failure alert
+        function showFailureAlert(failedTrucks) {
+            const alertsDiv = document.getElementById('failure-alerts');
+            alertsDiv.innerHTML = '';
+            
+            failedTrucks.forEach(truck => {
+                const alert = document.createElement('div');
+                alert.className = 'failure-alert';
+                alert.innerHTML = `
+                    <strong>🚨 CRITICAL ALERT</strong><br>
+                    Truck ${truck.truck_id}: ${truck.failure_reason}<br>
+                    <small>Automatic rescue dispatch initiated</small>
+                `;
+                alertsDiv.appendChild(alert);
+            });
+        }
+        
+        // Calculate number of deliveries for a truck based on its route
+        function calculateDeliveries(truck) {
+            if (truck.intended_route && truck.intended_route.length > 1) {
+                // Number of deliveries = route stops - 1 (excluding starting point)
+                return Math.max(1, truck.intended_route.length - 1);
+            }
+            // If no route, simulate based on truck capacity usage
+            const capacityUsed = 100 - (truck.capacityAvailable || 75);
+            return Math.max(1, Math.floor(capacityUsed / 15)); // Simulate deliveries based on capacity
+        }
+        
+        // Update truck display
+        function updateTruckDisplay(trucks) {
+            const list = document.getElementById('truck-list');
+            list.innerHTML = '';
+            
+            trucks.forEach(truck => {
+                const deliveries = calculateDeliveries(truck);
+                const item = document.createElement('div');
+                item.className = `truck-item ${truck.status}`;
+                item.innerHTML = `
+                    <div class="truck-id">🚛 ${truck.truck_id}</div>
+                    <div class="truck-stats">
+                        Status: <strong>${truck.status.toUpperCase()}</strong><br>
+                        🌡️ ${truck.temperature}°C | 🔋 ${truck.battery}%<br>
+                        📦 ${deliveries} deliveries scheduled
+                        ${truck.failure_reason ? `<br><span style="color: #dc3545;">⚠️ ${truck.failure_reason}</span>` : ''}
+                    </div>
+                `;
+                list.appendChild(item);
+            });
+        }
+        
+        // Update map markers - SHOW ROUTES & TRUCKS WITH MAGIC! ✨
+        function updateMapMarkers(trucks) {
+            if (!map) return;
+            
+            // Clear existing markers and routes
+            Object.values(markers).forEach(marker => map.removeLayer(marker));
+            Object.values(routeLines).forEach(item => {
+                if (Array.isArray(item)) {
+                    // Handle waypoint arrays
+                    item.forEach(waypoint => map.removeLayer(waypoint));
+                } else {
+                    // Handle route lines
+                    map.removeLayer(item);
+                }
+            });
+            markers = {};
+            routeLines = {};
+            
+            // Show only operational and failed trucks (not rescuing ones)
+            trucks.filter(truck => truck.status !== 'rescuing').forEach(truck => {
+                const color = truck.status === 'operational' ? '#28a745' : '#dc3545';
+                const isOperational = truck.status === 'operational';
+                
+                // 🎨 MAGICAL TRUCK MARKER
+                const icon = L.divIcon({
+                    className: 'truck-marker',
+                    html: `<div style="
+                        background: ${color}; 
+                        width: ${truck.status === 'failed' ? '35px' : '30px'}; 
+                        height: ${truck.status === 'failed' ? '35px' : '30px'}; 
+                        border-radius: 50%; 
+                        display: flex; 
+                        align-items: center; 
+                        justify-content: center; 
+                        color: white; 
+                        font-weight: bold; 
+                        font-size: ${truck.status === 'failed' ? '14px' : '10px'}; 
+                        border: 3px solid white; 
+                        box-shadow: 0 4px 12px rgba(0,0,0,0.4);
+                        ${truck.status === 'failed' ? 'animation: criticalPulse 1s infinite;' : 'animation: gentleGlow 3s infinite;'}
+                    ">${truck.status === 'failed' ? '🚨' : truck.truck_id.slice(-2)}</div>`,
+                    iconSize: [truck.status === 'failed' ? 35 : 30, truck.status === 'failed' ? 35 : 30],
+                    iconAnchor: [truck.status === 'failed' ? 17 : 15, truck.status === 'failed' ? 17 : 15]
+                });
+                
+                const marker = L.marker([truck.location.lat, truck.location.lng], { icon }).addTo(map);
+                
+                // 💫 ENHANCED POPUP WITH STATUS GLOW
+                marker.bindPopup(`
+                    <div style="text-align: center; padding: 0.5rem;">
+                        <h4 style="color: ${color};">🚛 ${truck.truck_id}</h4>
+                        <div style="background: ${color}; color: white; padding: 0.25rem; border-radius: 4px; margin: 0.5rem 0;">
+                            <strong>Status: ${truck.status.toUpperCase()}</strong>
+                        </div>
+                        <p><strong>🌡️ Temperature:</strong> <span style="color: ${truck.temperature > 8 ? '#dc3545' : '#28a745'}">${truck.temperature}°C</span></p>
+                        <p><strong>🔋 Battery:</strong> <span style="color: ${truck.battery < 20 ? '#dc3545' : '#28a745'}">${truck.battery}%</span></p>
+                        ${truck.failure_reason ? `<div style="color: #dc3545; font-weight: bold; margin-top: 0.5rem; padding: 0.25rem; background: #fdf2f2; border-radius: 4px;">⚠️ ${truck.failure_reason}</div>` : ''}
+                        ${isOperational ? '<div style="color: #28a745; font-size: 0.8rem; margin-top: 0.5rem;">✅ Following delivery route</div>' : ''}
+                    </div>
+                `);
+                
+                markers[truck.truck_id] = marker;
+                
+                // 🌟 MAGICAL ROUTE VISUALIZATION FOR OPERATIONAL TRUCKS
+                if (isOperational && truck.intended_route && truck.intended_route.length > 1) {
+                    // Get unique color for this truck's route
+                    const routeColor = getTruckRouteColor(truck.truck_id, trucks);
+                    console.log(`🚛 Creating route for ${truck.truck_id} with color ${routeColor}`);
+                    
+                    // Create beautiful animated route line with unique color
+                    const routeLine = L.polyline(truck.intended_route, {
+                        color: routeColor,
+                        weight: 4,
+                        opacity: 0.8,
+                        dashArray: '10, 5',
+                        className: 'delivery-route',
+                        lineCap: 'round',
+                        lineJoin: 'round'
+                    }).addTo(map);
+                    
+                    console.log(`✅ Route line created for ${truck.truck_id} - Color: ${routeColor}, Points: ${truck.intended_route.length}`);
+                    
+                    // Add route popup with delivery info
+                    routeLine.bindPopup(`
+                        <div style="text-align: center;">
+                            <h4 style="color: ${routeColor};">📍 ${truck.truck_id} Delivery Route</h4>
+                            <div style="background: ${routeColor}20; padding: 0.5rem; border-radius: 4px; margin: 0.5rem 0; border-left: 4px solid ${routeColor};">
+                                <p><strong>Route Points:</strong> ${truck.intended_route.length}</p>
+                                <p><strong>Status:</strong> <span style="color: #28a745;">Active Delivery</span></p>
+                                <p><strong>Route Color:</strong> <span style="color: ${routeColor}; font-weight: bold;">${routeColor}</span></p>
+                            </div>
+                            <div style="font-size: 0.8rem; color: #6c757d; margin-top: 0.5rem;">
+                                🚛 Following optimized Mumbai route
+                            </div>
+                        </div>
+                    `);
+                    
+                    routeLines[truck.truck_id] = routeLine;
+                    
+                    // 🎯 ADD DELIVERY WAYPOINTS WITH MATCHING COLORS
+                    truck.intended_route.forEach((point, index) => {
+                        if (index > 0) { // Skip first point (current location)
+                            const waypointIcon = L.divIcon({
+                                className: 'waypoint-marker',
+                                html: `<div style="
+                                    background: ${routeColor}; 
+                                    width: 12px; 
+                                    height: 12px; 
+                                    border-radius: 50%; 
+                                    border: 2px solid white; 
+                                    box-shadow: 0 2px 4px rgba(0,0,0,0.3);
+                                    animation: waypointPulse 2s infinite;
+                                "></div>`,
+                                iconSize: [12, 12],
+                                iconAnchor: [6, 6]
+                            });
+                            
+                            const waypointMarker = L.marker([point[0], point[1]], { icon: waypointIcon }).addTo(map);
+                            waypointMarker.bindPopup(`
+                                <div style="text-align: center;">
+                                    <h4 style="color: ${routeColor};">📍 Delivery Point ${index}</h4>
+                                    <div style="background: ${routeColor}20; padding: 0.5rem; border-radius: 4px; margin: 0.5rem 0; border-left: 4px solid ${routeColor};">
+                                        <p><strong>Truck:</strong> ${truck.truck_id}</p>
+                                        <p><strong>Coordinates:</strong> ${point[0].toFixed(4)}, ${point[1].toFixed(4)}</p>
+                                        <p><strong>Route:</strong> <span style="color: ${routeColor}; font-weight: bold;">● Delivery Path</span></p>
+                                    </div>
+                                </div>
+                            `);
+                            
+                            // Store waypoint with route for cleanup
+                            if (!routeLines[truck.truck_id + '_waypoints']) {
+                                routeLines[truck.truck_id + '_waypoints'] = [];
+                            }
+                            routeLines[truck.truck_id + '_waypoints'].push(waypointMarker);
+                        }
+                    });
+                }
+            });
+        }
+        
+        // Generate demo data
+        function generateDemoData() {
+            return [
+                { 
+                    truck_id: 'MH01', 
+                    status: 'operational', 
+                    temperature: 4.2, 
+                    battery: 87, 
+                    location: { lat: 19.0760, lng: 72.8777 }, 
+                    failure_reason: null,
+                    intended_route: [[19.0760, 72.8777], [19.1197, 72.8464], [19.2183, 72.9781]]
+                },
+                { 
+                    truck_id: 'MH02', 
+                    status: 'operational', 
+                    temperature: 5.1, 
+                    battery: 92, 
+                    location: { lat: 19.1197, lng: 72.8464 }, 
+                    failure_reason: null,
+                    intended_route: [[19.0170, 72.8478], [19.0759, 72.8774], [19.0330, 73.0297]]
+                },
+                { 
+                    truck_id: 'MH03', 
+                    status: 'operational', 
+                    temperature: 3.8, 
+                    battery: 78, 
+                    location: { lat: 19.0596, lng: 72.8295 }, 
+                    failure_reason: null,
+                    intended_route: [[19.0596, 72.8295], [19.0760, 72.8777], [19.1593, 72.8478]]
+                },
+                { 
+                    truck_id: 'MH04', 
+                    status: 'operational', 
+                    temperature: 6.2, 
+                    battery: 84, 
+                    location: { lat: 19.2183, lng: 72.9781 }, 
+                    failure_reason: null,
+                    intended_route: [[19.2183, 72.9781], [19.1197, 72.8464], [18.9647, 72.8258]]
+                }
+            ];
+        }
+        
+        // Update status banner
+        function updateStatus(message) {
+            document.getElementById('status').textContent = message;
+        }
+        
+        // Add log entry
+        function addLog(message) {
+            const logs = document.getElementById('logs');
+            const entry = document.createElement('div');
+            entry.textContent = `${new Date().toLocaleTimeString()} - ${message}`;
+            logs.appendChild(entry);
+            logs.scrollTop = logs.scrollHeight;
+            
+            // Keep only last 8 logs
+            while (logs.children.length > 8) {
+                logs.removeChild(logs.firstChild);
+            }
+        }
+        
+        // Trigger demo failure
+        async function triggerFailure() {
+            try {
+                const response = await fetch('/truck_status');
+                const trucks = await response.json();
+                const operationalTruck = trucks.find(t => t.status === 'operational');
+                
+                if (operationalTruck) {
+                    await fetch(`/force_failure/${operationalTruck.truck_id}`, { method: 'POST' });
+                    addLog(`🔧 Demo failure triggered on ${operationalTruck.truck_id}`);
+                }
+            } catch (error) {
+                addLog('🔧 Demo mode - simulating failure');
+            }
+        }
+        
+        // Open rescue view
+        function openRescueView() {
+            window.open('/rescue_ops', '_blank');
+        }
+        
+        // Refresh map
+        function refreshMap() {
+            if (map) {
+                map.invalidateSize();
+                fetchTruckData();
+            } else {
+                initMap();
+            }
+        }
+        
+        // Initialize when page loads
+        document.addEventListener('DOMContentLoaded', function() {
+            console.log('🚀 Starting normal operations monitoring...');
+            addLog('System initializing...');
+            addLog('Loading Mumbai fleet...');
+            
+            setTimeout(() => {
+                initMap();
+            }, 500);
+        });
+        
+        // Add pulse animation
+        const style = document.createElement('style');
+        style.textContent = `
+            @keyframes pulse {
+                0% { transform: scale(1); }
+                50% { transform: scale(1.1); }
+                100% { transform: scale(1); }
+            }
+        `;
+        document.head.appendChild(style);
+    </script>
+</body>
+</html>
