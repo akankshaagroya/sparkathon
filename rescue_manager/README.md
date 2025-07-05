@@ -1,111 +1,68 @@
-# Rescue Manager System
+# 🚛 Mumbai Cold Chain Rescue Demo
 
-This is a cold chain truck rescue management system that detects truck failures and assigns rescue operations automatically.
+A **production-ready, minimal UI** for real-time cold chain truck monitoring, manual failure triggering, and automated rescue operations.
 
-## Features
+---
 
-- **Failure Detection**: Monitors truck temperature, refrigeration status, and battery levels
-- **Intelligent Rescue Assignment**: Uses a scoring algorithm to find the best rescue truck
-- **ETA Preservation**: Attempts to maintain delivery schedules during rescue operations
-- **Cost Calculation**: Estimates money saved through successful rescue operations
-- **Comprehensive Logging**: Tracks all rescue operations with detailed logs
-- **REST API**: Provides endpoints for integration with other systems
+## 🚀 Quick Start (Manual)
 
-## Quick Start
+1. **Install dependencies**  
+   ```bash
+   pip install -r requirements.txt
+   ```
 
-1. Install dependencies:
-```bash
-pip install -r requirements.txt
-```
+2. **Start the backend server**  
+   ```bash
+   python enhanced_main.py
+   ```
 
-2. Run the server:
-```bash
-uvicorn main:app --reload
-```
+3. **Open your browser and access:**  
+   - **Homepage:** [http://localhost:8000](http://localhost:8000)  
+   - **Normal Operations Map:** [http://localhost:8000/normal_ops](http://localhost:8000/normal_ops)  
+   - **Rescue Operations Map:** [http://localhost:8000/rescue_ops](http://localhost:8000/rescue_ops)  
+   - **API Docs:** [http://localhost:8000/docs](http://localhost:8000/docs)
 
-3. Access the API:
-- Main rescue endpoint: http://127.0.0.1:8000/run_rescue
-- Truck status: http://127.0.0.1:8000/truck_status
-- API documentation: http://127.0.0.1:8000/docs
+---
 
-## API Endpoints
+## 🛠️ What This Demo Solves
 
-### GET /run_rescue
-Main rescue operation endpoint that:
-- Detects failed trucks based on temperature, refrigeration, and battery criteria
-- Finds the best rescue truck for each failed truck using a scoring algorithm
-- Returns rescue operation payloads
+- **Manual Failure Triggers:**  
+  Trigger realistic breakdowns (temperature, battery, engine, GPS, refrigeration, route block) for any truck, via the homepage.
 
-### GET /truck_status
-Returns current status of all trucks, including failed and operational trucks.
+- **Automatic Rescue Dispatch & Completion:**  
+  When a truck fails, the system auto-selects the best available rescue truck using a 6-factor scoring algorithm and dispatches it. Rescue completion is simulated and visualized.
 
-### GET /health
-Health check endpoint.
+- **Live Map Visualization:**  
+  - **Normal Ops:** Shows all trucks, each with a visually distinct route color, delivery count, and status.
+  - **Rescue Ops:** Shows failed truck, rescue truck, animated rescue route, and detailed rescue analytics.
 
-### POST /update_truck_data
-Updates the truck dataset with new information.
+- **Unified Scenario:**  
+  All maps and UI reflect the same live backend state.
 
-### GET /logs
-Lists all rescue operation logs.
+- **Distinct Route Colors:**  
+  Each truck always gets a unique, ultra-distinct color from a fixed palette, regardless of truck ID.
 
-### GET /logs/{log_id}
-Retrieves a specific rescue operation log.
+- **Realistic Failure Types:**  
+  Simulate temperature, battery, engine, GPS, refrigeration, and route block failures.
 
-## Failure Criteria
+- **Visual Clarity:**  
+  See which vehicle is coming to rescue, route progress, and automatic disappearance of rescue visuals when complete.
 
-A truck is marked as FAILED if:
-- Temperature > 8°C
-- Refrigeration = False
-- Battery < 5%
+---
 
-## Rescue Scoring Algorithm
+## 🧩 Main Functions/Flows
 
-The system uses a weighted scoring formula to select the best rescue truck:
+- **/truck_status**: Get live status of all trucks (location, temp, battery, status, route, etc.)
+- **/trigger_failure/{type}**: Manually trigger a specific failure type for a random operational truck.
+- **/rescue_routes**: Get all active rescue operations and routes.
+- **/system_logs**: Get the latest system logs.
+- **/normal_ops**: Map UI for normal operations (distinct routes, delivery counts, status).
+- **/rescue_ops**: Map UI for rescue operations (failed/rescue trucks, animated rescue route, analytics).
+- **/start_simulation**: (Optional) Start background simulation for rescue completion.
+- **/stop_simulation**: (Optional) Stop background simulation.
 
-```
-Score = (α × distance_factor) - (β × stops_remaining) + (γ × capacity_available) + (δ × cold_chain_reliability) - (ε × eta_factor)
-```
+---
 
-Where:
-- α = 3.0 (Distance factor weight)
-- β = 1.5 (Stops remaining weight)  
-- γ = 2.0 (Capacity available weight)
-- δ = 5.0 (Cold chain reliability weight)
-- ε = 2.0 (ETA weight)
+**No .bat files, no scripts needed—just run the Python backend and open the browser!**
 
-## Sample Output
-
-```json
-{
-  "rescue": true,
-  "fromTruck": "TRK_04",
-  "toTruck": "TRK_07",
-  "etaPreserved": true,
-  "moneySaved": 2100,
-  "itemsTransferred": ["milk", "fruit"],
-  "timestamp": 1720345260,
-  "rescueDetails": {
-    "failureReasons": ["Battery too low: 3%"],
-    "rescueDistance": 4.25,
-    "rescueETA": 6.38,
-    "rescueScore": 8.45
-  }
-}
-```
-
-## File Structure
-
-- `main.py` - FastAPI application with REST endpoints
-- `data.py` - Mock truck dataset for testing
-- `rescue_logic.py` - Core rescue logic and scoring algorithms
-- `utils.py` - Utility functions for distance and ETA calculations
-- `logs/` - Directory for storing rescue operation logs
-- `requirements.txt` - Python dependencies
-
-## Configuration
-
-Key parameters can be adjusted in `rescue_logic.py`:
-- Temperature threshold
-- Battery thresholds
-- Scoring formula weights
-- Minimum requirements for rescue trucks
+If you need a more detailed or customized README, let me know!
