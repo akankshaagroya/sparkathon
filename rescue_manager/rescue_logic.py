@@ -1,16 +1,17 @@
-from utils import get_distance_km, get_eta_minutes, calculate_money_saved
+from utils import get_distance_km, get_eta_minutes, calculate_money_saved, estimate_delivery_delay_cost, get_route_efficiency_score
 import logging
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-# Scoring formula weights
+# Enhanced scoring formula weights
 ALPHA = 3.0    # Distance factor weight
-BETA = 1.5     # Stops remaining weight
+BETA = 1.5     # Stops remaining weight  
 GAMMA = 2.0    # Capacity available weight
 DELTA = 5.0    # Cold chain reliability weight
 EPSILON = 2.0  # ETA weight
+ZETA = 4.0     # Delivery window impact weight (NEW)
 
 # Failure detection thresholds
 TEMP_THRESHOLD = 8  # Celsius
@@ -43,6 +44,30 @@ def detect_failures(trucks):
     
     return failed_trucks
 
+def calculate_delivery_window_impact(rescue_truck, failed_truck):
+    """
+    Calculate impact on delivery windows for both rescue and existing deliveries
+    Returns a normalized score (0-1, higher is better)
+    """
+    # Get rescue time to failed truck
+    rescue_eta = get_eta_minutes(rescue_truck['location'], failed_truck['location'])
+    
+    # Estimate additional time for rescue operation
+    transfer_time = 30  # 30 minutes for goods transfer
+    total_rescue_time = rescue_eta + transfer_time
+    
+    # Calculate delay impact on rescue truck's remaining deliveries
+    stops_remaining = rescue_truck['stopsRemaining']
+    
+    # Penalty for each stop that might be delayed
+    delay_penalty = stops_remaining * (total_rescue_time / 60)  # Hours of delay
+    
+    # Normalize to 0-1 scale (lower delay = higher score)
+    max_acceptable_delay = 2.0  # 2 hours max acceptable delay
+    window_score = max(0, 1 - (delay_penalty / max_acceptable_delay))
+    
+    return window_score
+
 def score_truck(rescue_truck, failed_truck):
     """
     Calculate rescue score for a truck based on multiple factors
@@ -56,12 +81,31 @@ def score_truck(rescue_truck, failed_truck):
     cold_chain = rescue_truck['coldChainReliability']
     eta = get_eta_minutes(rescue_truck['location'], failed_truck['location'])
     
-    # Calculate score using weighted formula
-    score = (ALPHA * distance_factor) - (BETA * stops_left) + (GAMMA * capacity_available) + (DELTA * cold_chain) - (EPSILON * eta / 60)
+    # NEW: Calculate delivery window impact
+    delivery_window_score = calculate_delivery_window_impact(rescue_truck, failed_truck)
+    
+    # Normalize ETA factor (convert to 0-1 scale)
+    max_acceptable_eta = 120  # 2 hours max
+    eta_factor = max(0, 1 - (eta / max_acceptable_eta))
+    
+    # Normalize stops factor (fewer stops = higher score)
+    max_stops = 10
+    stops_factor = max(0, 1 - (stops_left / max_stops))
+    
+    # Enhanced scoring formula with proper normalization
+    score = (
+        ALPHA * distance_factor +
+        BETA * stops_factor + 
+        GAMMA * capacity_available + 
+        DELTA * cold_chain + 
+        EPSILON * eta_factor +
+        ZETA * delivery_window_score  # NEW delivery window factor
+    )
     
     logger.debug(f"Scoring truck {rescue_truck['id']} for rescue of {failed_truck['id']}: "
                 f"distance={distance:.2f}km, stops={stops_left}, capacity={capacity_available:.2f}, "
-                f"cold_chain={cold_chain:.2f}, eta={eta:.2f}min, score={score:.2f}")
+                f"cold_chain={cold_chain:.2f}, eta={eta:.2f}min, delivery_window={delivery_window_score:.2f}, "
+                f"score={score:.2f}")
     
     return score
 
@@ -101,24 +145,42 @@ def find_best_rescue(failed_truck, trucks):
 
 def can_preserve_eta(rescue_truck, failed_truck):
     """
-    Determine if ETA can be preserved after rescue operation
+    Enhanced ETA preservation check with delivery window consideration
     """
-    # Calculate if rescue truck can reach failed truck quickly enough
     rescue_eta = get_eta_minutes(rescue_truck['location'], failed_truck['location'])
+    transfer_time = 30  # minutes for goods transfer
+    total_time = rescue_eta + transfer_time
     
-    # Simple heuristic: if rescue truck is close and has few stops, ETA can be preserved
-    if rescue_eta <= 30 and rescue_truck['stopsRemaining'] <= 2:
-        return True
+    # Check multiple conditions for ETA preservation
+    conditions = [
+        rescue_eta <= 30,  # Quick rescue response
+        rescue_truck['stopsRemaining'] <= 2,  # Few remaining stops
+        total_time <= 60,  # Total operation under 1 hour
+        rescue_truck['capacityAvailable'] >= 0.3  # Adequate capacity buffer
+    ]
     
-    return False
+    # ETA can be preserved if at least 3 out of 4 conditions are met
+    return sum(conditions) >= 3
 
 def create_rescue_payload(failed_truck, rescue_truck, timestamp):
     """
-    Create the rescue operation payload
+    Create the rescue operation payload with enhanced metrics
     """
+    from utils import estimate_delivery_delay_cost, get_route_efficiency_score
+    
     eta_preserved = can_preserve_eta(rescue_truck, failed_truck)
     items_transferred = failed_truck.get('items', [])
     money_saved = calculate_money_saved(failed_truck, items_transferred)
+    
+    # Calculate delivery window impact
+    delivery_window_score = calculate_delivery_window_impact(rescue_truck, failed_truck)
+    
+    # Estimate potential delay costs
+    rescue_eta_hours = get_eta_minutes(rescue_truck['location'], failed_truck['location']) / 60
+    delay_cost = estimate_delivery_delay_cost(rescue_eta_hours, rescue_truck['stopsRemaining'])
+    
+    # Route efficiency
+    route_efficiency = get_route_efficiency_score(rescue_truck, failed_truck)
     
     payload = {
         "rescue": True,
@@ -132,7 +194,17 @@ def create_rescue_payload(failed_truck, rescue_truck, timestamp):
             "failureReasons": failed_truck.get('failure_reasons', []),
             "rescueDistance": round(get_distance_km(rescue_truck['location'], failed_truck['location']), 2),
             "rescueETA": round(get_eta_minutes(rescue_truck['location'], failed_truck['location']), 2),
-            "rescueScore": round(score_truck(rescue_truck, failed_truck), 2)
+            "rescueScore": round(score_truck(rescue_truck, failed_truck), 2),
+            "deliveryWindowScore": round(delivery_window_score, 2),
+            "estimatedDelayCost": round(delay_cost, 2),
+            "routeEfficiency": round(route_efficiency, 2),
+            "keyFactors": {
+                "proximity": f"{round(get_distance_km(rescue_truck['location'], failed_truck['location']), 2)} km",
+                "coldChainStatus": "Working" if rescue_truck['refrigeration'] else "Failed",
+                "availableCapacity": f"{round(rescue_truck['capacityAvailable'] * 100, 1)}%",
+                "batteryLevel": f"{rescue_truck['battery']}%",
+                "stopsRemaining": rescue_truck['stopsRemaining']
+            }
         }
     }
     

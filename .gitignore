@@ -1,0 +1,42 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+env/
+venv/
+.venv/
+pip-log.txt
+pip-delete-this-directory.txt
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Project specific - exclude test outputs and logs
+rescue_manager/logs/*.json
+maptry/output/*.html
+maptry/output/*.json
+dataset/output/*.csv
+dataset/output/*.json
+
+# Keep only the essential output structure
+!rescue_manager/logs/.gitkeep
+!maptry/output/.gitkeep
+!dataset/output/.gitkeep
+
+# Temporary files
+*.tmp
+*.log
+*.bak
+
+# Environment files
+.env
+.env.local

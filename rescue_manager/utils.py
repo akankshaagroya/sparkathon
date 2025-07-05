@@ -33,3 +33,33 @@ def calculate_money_saved(failed_truck, items_transferred):
     penalty_avoidance = 1000
     
     return total_value + penalty_avoidance
+
+def estimate_delivery_delay_cost(delay_hours, stops_affected):
+    """
+    Calculate estimated cost of delivery delays
+    """
+    # Cost per hour of delay per delivery stop
+    delay_cost_per_hour_per_stop = 50
+    
+    # Customer satisfaction penalty (exponential with delay)
+    satisfaction_penalty = min(delay_hours * 100, 500)  # Cap at 500
+    
+    total_cost = (delay_hours * stops_affected * delay_cost_per_hour_per_stop) + satisfaction_penalty
+    
+    return total_cost
+
+def get_route_efficiency_score(rescue_truck, failed_truck):
+    """
+    Calculate how efficiently the rescue truck can integrate the failed truck's delivery
+    into its existing route
+    """
+    # Simple heuristic based on geographical efficiency
+    rescue_distance = get_distance_km(rescue_truck['location'], failed_truck['location'])
+    
+    # If rescue truck is very close, integration is efficient
+    if rescue_distance <= 5:  # 5km threshold
+        return 0.9
+    elif rescue_distance <= 15:  # 15km threshold  
+        return 0.6
+    else:
+        return 0.3
