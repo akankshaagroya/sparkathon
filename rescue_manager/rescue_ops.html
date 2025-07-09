@@ -217,6 +217,14 @@
         let routeLines = {};
         let rescueTimers = {}; // Track rescue start times for dynamic countdown
         
+        // Add missing updateStatus function
+        function updateStatus(message) {
+            const statusBanner = document.getElementById('status');
+            if (statusBanner) {
+                statusBanner.textContent = message;
+            }
+        }
+        
         // Initialize map
         function initMap() {
             try {
@@ -283,6 +291,43 @@
             }
         }
         
+        // Ensure all rescue trucks are present in the trucks list (for display and lookup)
+        function mergeRescueTrucks(trucks, rescues) {
+            // Create a copy to avoid mutating the original
+            const trucksCopy = [...trucks];
+            const truckIds = new Set(trucksCopy.map(t => t.truck_id));
+            Object.values(rescues).forEach(rescue => {
+                if (rescue.multi_rescue && Array.isArray(rescue.rescuers)) {
+                    rescue.rescuers.forEach(rescuer => {
+                        if (rescuer.rescue_truck_id && !truckIds.has(rescuer.rescue_truck_id)) {
+                            // Add a minimal truck object for display
+                            trucksCopy.push({
+                                truck_id: rescuer.rescue_truck_id,
+                                status: 'rescuing',
+                                battery: '-',
+                                temperature: '-',
+                                coldChainReliability: '-',
+                                capacityAvailable: '-',
+                                // You can add more fields if needed
+                            });
+                            truckIds.add(rescuer.rescue_truck_id);
+                        }
+                    });
+                } else if (rescue.rescue_truck_id && !truckIds.has(rescue.rescue_truck_id)) {
+                    trucksCopy.push({
+                        truck_id: rescue.rescue_truck_id,
+                        status: 'rescuing',
+                        battery: '-',
+                        temperature: '-',
+                        coldChainReliability: '-',
+                        capacityAvailable: '-',
+                    });
+                    truckIds.add(rescue.rescue_truck_id);
+                }
+            });
+            return trucksCopy;
+        }
+        
         // Fetch live rescue data
         async function fetchRescueData() {
             try {
@@ -290,8 +335,9 @@
                     fetch('/truck_status'),
                     fetch('/rescue_routes')
                 ]);
-                const truckData = await trucksResponse.json();
+                let truckData = await trucksResponse.json();
                 const rescueData = await rescuesResponse.json();
+                truckData = mergeRescueTrucks(truckData, rescueData);
                 updateRescueDisplay(truckData, rescueData);
                 updateRescueMap(truckData, rescueData);
                 const activeRescues = Object.keys(rescueData).length;
@@ -308,7 +354,6 @@
         function updateRescueDisplay(trucks, rescues) {
             const list = document.getElementById('rescue-list');
             list.innerHTML = '';
-            
             // Show only trucks with status 'rescuing' or those with an active rescue route
             const activeRescueTrucks = trucks.filter(t => t.status === 'rescuing' || rescues[t.truck_id]);
             if (activeRescueTrucks.length === 0) {
@@ -317,70 +362,91 @@
             }
             activeRescueTrucks.forEach(truck => {
                 const rescue = rescues[truck.truck_id];
-                const rescueTruck = rescue ? trucks.find(t => t.truck_id === rescue.rescue_truck_id) : null;
-                
-                const item = document.createElement('div');
+                let item = document.createElement('div');
                 item.className = `rescue-item ${truck.status === 'failed' ? 'active' : ''}`;
-                
                 const statusIcon = truck.status === 'failed' ? '🆘' : '🚑';
                 const statusText = truck.status === 'failed' ? 'EMERGENCY' : 'RESCUE IN PROGRESS';
-                
                 let rescueInfo = '';
-                if (rescue && rescueTruck) {
-                    const reliability = rescueTruck.coldChainReliability || 95;
-                    const capacity = rescueTruck.capacityAvailable || 75;
-                    const batteryStatus = rescueTruck.battery > 80 ? '🟢' : rescueTruck.battery > 50 ? '🟡' : '🔴';
-                    
-                    // Calculate dynamic rescue progress
-                    const progress = calculateRescueProgress(rescue, truck.truck_id);
-                    
-                    // Calculate additional insights
-                    const priorityLevel = truck.failure_reason?.includes('Temperature') || truck.failure_reason?.includes('Cold Chain') ? 'CRITICAL' : 'STANDARD';
-                    const priorityIcon = priorityLevel === 'CRITICAL' ? '🚨' : '⚠️';
-                    const priorityColor = priorityLevel === 'CRITICAL' ? '#dc3545' : '#ffc107';
-                    
-                    const estimatedCost = Math.round(rescue.distance_km * 12.5 + 450); // Base cost + distance
-                    
-                    // Simulated rescue vehicle performance history
-                    const successRate = Math.max(85, reliability - Math.random() * 10);
-                    const avgRescueTime = Math.round(rescue.eta_minutes * 0.9 + Math.random() * 6);
-                    
-                    rescueInfo = `
-                        <div style="background: #e8f5e8; padding: 0.5rem; border-radius: 4px; margin-top: 0.5rem;">
-                            <strong>🚑 RESCUE ANALYSIS:</strong><br>
-                            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.3rem; margin: 0.3rem 0; font-size: 0.85rem;">
-                                <div><strong>Vehicle:</strong> ${rescue.rescue_truck_id}</div>
-                                <div><strong>Priority:</strong> <span style="color: ${priorityColor}">${priorityIcon} ${priorityLevel}</span></div>
-                                <div><strong>ETA:</strong> ${formatTimeRemaining(progress.timeRemaining)}</div>
-                                <div><strong>Distance:</strong> ${rescue.distance_km} km</div>
-                                <div><strong>Progress:</strong> <span style="color: #28a745">${progress.progressPercent}%</span></div>
-                                <div><strong>Est. Cost:</strong> ₹${estimatedCost}</div>
-                            </div>
-                            
-                            <div style="background: #f8f9fa; padding: 0.3rem; border-radius: 3px; margin: 0.3rem 0;">
-                                <strong>📊 VEHICLE PERFORMANCE:</strong><br>
-                                <div style="font-size: 0.8rem;">
-                                    <strong>Reliability:</strong> ${reliability}% | <strong>Success Rate:</strong> ${successRate.toFixed(1)}%<br>
-                                    <strong>Capacity:</strong> ${capacity}% avail | <strong>Avg Rescue:</strong> ${avgRescueTime} min<br>
+                if (rescue) {
+                    if (rescue.multi_rescue && Array.isArray(rescue.rescuers)) {
+                        // Multi-truck rescue: show info for each rescuer
+                        rescueInfo = `<div style="background: #e8f5e8; padding: 0.5rem; border-radius: 4px; margin-top: 0.5rem;">
+                            <strong>🟡 MULTI-TRUCK RESCUE DISPATCHED:</strong><br>`;
+                        rescue.rescuers.forEach((rescuer, idx) => {
+                            let rescueTruck = trucks.find(t => t.truck_id === rescuer.rescue_truck_id);
+                            // If not found, create a minimal placeholder so name is never undefined
+                            if (!rescueTruck) {
+                                rescueTruck = { truck_id: rescuer.rescue_truck_id, battery: '-', temperature: '-', coldChainReliability: '-', capacityAvailable: '-' };
+                            }
+                            const reliability = rescueTruck.coldChainReliability || 95;
+                            const capacity = rescueTruck.capacityAvailable || 75;
+                            const batteryStatus = rescueTruck.battery > 80 ? '🟢' : rescueTruck.battery > 50 ? '🟡' : '🔴';
+                            const rescueTruckName = rescueTruck && rescueTruck.truck_id ? rescueTruck.truck_id : `RESCUE_UNIT_${idx+1}`;
+                            rescueInfo += `
+                                <div style="margin: 0.5rem 0; padding: 0.5rem; background: #fff3cd; border-radius: 4px; border-left: 4px solid #007bff;">
+                                    <strong>Vehicle:</strong> ${rescueTruckName} | <strong>Load Share:</strong> ${rescuer.load_percent}%<br>
+                                    <strong>ETA:</strong> ${rescuer.eta_minutes || '-'} min | <strong>Distance:</strong> ${rescuer.distance_km || '-'} km<br>
+                                    <strong>Reliability:</strong> ${reliability}% | <strong>Capacity:</strong> ${capacity}%<br>
                                     <strong>Battery:</strong> ${batteryStatus} ${rescueTruck.battery}% | <strong>Temp:</strong> ${rescueTruck.temperature}°C ❄️
+                                </div>`;
+                        });
+                        rescueInfo += `</div>`;
+                    } else if (rescue.rescue_truck_id && !rescue.multi_rescue) {
+                        // Single-truck rescue only if rescue_truck_id exists and not multi_rescue
+                        const rescueTruck = trucks.find(t => t.truck_id === rescue.rescue_truck_id);
+                        if (rescueTruck) {
+                            const reliability = rescueTruck.coldChainReliability || 95;
+                            const capacity = rescueTruck.capacityAvailable || 75;
+                            const batteryStatus = rescueTruck.battery > 80 ? '🟢' : rescueTruck.battery > 50 ? '🟡' : '🔴';
+                            const progress = calculateRescueProgress(rescue, truck.truck_id);
+                            const priorityLevel = truck.failure_reason?.includes('Temperature') || truck.failure_reason?.includes('Cold Chain') ? 'CRITICAL' : 'STANDARD';
+                            const priorityIcon = priorityLevel === 'CRITICAL' ? '🚨' : '⚠️';
+                            const priorityColor = priorityLevel === 'CRITICAL' ? '#dc3545' : '#ffc107';
+                            const successRate = Math.max(85, reliability - Math.random() * 10);
+                            const avgRescueTime = Math.round(rescue.eta_minutes * 0.9 + Math.random() * 6);
+                            rescueInfo = `
+                                <div style="background: #e8f5e8; padding: 0.5rem; border-radius: 4px; margin-top: 0.5rem;">
+                                    <strong>🚑 RESCUE ANALYSIS:</strong><br>
+                                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.3rem; margin: 0.3rem 0; font-size: 0.85rem;">
+                                        <div><strong>Vehicle:</strong> ${rescue.rescue_truck_id}</div>
+                                        <div><strong>Priority:</strong> <span style="color: ${priorityColor}">${priorityIcon} ${priorityLevel}</span></div>
+                                        <div><strong>ETA:</strong> ${formatTimeRemaining(progress.timeRemaining)}</div>
+                                        <div><strong>Distance:</strong> ${rescue.distance_km} km</div>
+                                        <div><strong>Progress:</strong> <span style="color: #28a745">${progress.progressPercent}%</span></div>
+                                    </div>
+                                    <div style="background: #f8f9fa; padding: 0.3rem; border-radius: 3px; margin: 0.3rem 0;">
+                                        <strong>📊 VEHICLE PERFORMANCE:</strong><br>
+                                        <div style="font-size: 0.8rem;">
+                                            <strong>Reliability:</strong> ${reliability}% | <strong>Success Rate:</strong> ${successRate.toFixed(1)}%<br>
+                                            <strong>Capacity:</strong> ${capacity}% avail | <strong>Avg Rescue:</strong> ${avgRescueTime} min<br>
+                                            <strong>Battery:</strong> ${batteryStatus} ${rescueTruck.battery}% | <strong>Temp:</strong> ${rescueTruck.temperature}°C ❄️
+                                        </div>
+                                    </div>
+                                    <div style="background: linear-gradient(90deg, #28a745 ${progress.progressPercent}%, #e9ecef ${progress.progressPercent}%); height: 6px; border-radius: 3px; margin: 0.3rem 0;"></div>
+                                    <div style="text-align: center; font-size: 0.75rem; color: #6c757d;">
+                                        🎯 AI-Optimized Rescue • ${progress.elapsedMinutes} min elapsed • Live Tracking
+                                    </div>
                                 </div>
+                            `;
+                        } else {
+                            rescueInfo = `
+                                <div style="background: #fff3cd; padding: 0.5rem; border-radius: 4px; margin-top: 0.5rem;">
+                                    <strong>🚑 RESCUE DISPATCHED:</strong><br>
+                                    Vehicle: <strong>${rescue.rescue_truck_id}</strong><br>
+                                    ETA: <strong>${rescue.eta_minutes} minutes</strong><br>
+                                    Distance: ${rescue.distance_km} km
+                                </div>
+                            `;
+                        }
+                    } else {
+                        // Rescue exists but no truck assigned yet
+                        rescueInfo = `
+                            <div style="background: #f8d7da; padding: 0.5rem; border-radius: 4px; margin-top: 0.5rem;">
+                                ⏳ <strong>Finding optimal rescue vehicle...</strong><br>
+                                <small>AI analyzing 6 factors: distance, battery, capacity, reliability</small>
                             </div>
-                            
-                            <div style="background: linear-gradient(90deg, #28a745 ${progress.progressPercent}%, #e9ecef ${progress.progressPercent}%); height: 6px; border-radius: 3px; margin: 0.3rem 0;"></div>
-                            <div style="text-align: center; font-size: 0.75rem; color: #6c757d;">
-                                🎯 AI-Optimized Rescue • ${progress.elapsedMinutes} min elapsed • Live Tracking
-                            </div>
-                        </div>
-                    `;
-                } else if (rescue) {
-                    rescueInfo = `
-                        <div style="background: #fff3cd; padding: 0.5rem; border-radius: 4px; margin-top: 0.5rem;">
-                            <strong>🚑 RESCUE DISPATCHED:</strong><br>
-                            Vehicle: <strong>${rescue.rescue_truck_id}</strong><br>
-                            ETA: <strong>${rescue.eta_minutes} minutes</strong><br>
-                            Distance: ${rescue.distance_km} km
-                        </div>
-                    `;
+                        `;
+                    }
                 } else {
                     rescueInfo = `
                         <div style="background: #f8d7da; padding: 0.5rem; border-radius: 4px; margin-top: 0.5rem;">
@@ -389,7 +455,6 @@
                         </div>
                     `;
                 }
-                
                 item.innerHTML = `
                     <div class="rescue-id">${statusIcon} ${truck.truck_id} - ${statusText}</div>
                     <div class="rescue-stats">
@@ -435,48 +500,128 @@
                 setTimeout(() => { map.closePopup(successPopup); }, 3000);
                 return;
             }
-            
-            // For each active rescue, show ONLY the failed truck, rescuing truck, and the rescue route
-            Object.entries(rescues).forEach(([failedTruckId, rescue]) => {
-                const routeCoords = rescue.route && rescue.route.route_coordinates;
-                if (!routeCoords || routeCoords.length < 2) return;
-                // Place rescue truck marker at start of route
-                const rescueIcon = L.divIcon({
-                    className: 'rescue-marker',
-                    html: `<div style="background: linear-gradient(135deg, #ffc107 0%, #ff9800 100%); width: 45px; height: 45px; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: black; font-weight: bold; font-size: 20px; border: 4px solid white; box-shadow: 0 4px 15px rgba(255,193,7,0.7); animation: rescueMove 1.5s infinite ease-in-out;">🚑</div>`,
-                    iconSize: [45, 45],
-                    iconAnchor: [22, 22]
-                });
-                const rescueMarker = L.marker(routeCoords[0], { icon: rescueIcon }).addTo(map);
-                rescueMarker.bindPopup(`
-                    <div style="text-align: center; min-width: 300px;">
-                        <h4>🚑 Rescue Truck - RESCUE UNIT</h4>
-                        <div style="background: #fff3cd; padding: 0.5rem; border-radius: 4px; margin: 0.5rem 0; border-left: 4px solid #ffc107;">
-                            <strong>🎯 Target:</strong> ${failedTruckId}<br>
-                            <strong>⏱️ ETA:</strong> ${rescue.eta_minutes} min<br>
-                            <strong>📍 Distance:</strong> ${rescue.distance_km} km
-                        </div>
-                    </div>
-                `);
-                markers[`rescue_${rescue.rescue_truck_id}`] = rescueMarker;
 
-                // Place failed truck marker at end of route
+            // For each active rescue, handle single or multi-truck rescue
+            Object.entries(rescues).forEach(([failedTruckId, rescue]) => {
+                if (rescue.multi_rescue && Array.isArray(rescue.rescuers)) {
+                    // --- Multi-truck rescue ---
+                    const colors = ['#ffc107', '#007bff', '#28a745', '#e67e22'];
+                    rescue.rescuers.forEach((rescuer, idx) => {
+                        const routeCoords = rescuer.route && rescuer.route.route_coordinates;
+                        if (!routeCoords || routeCoords.length < 2) return;
+                        // Place rescue truck marker at start of route
+                        const rescueIcon = L.divIcon({
+                            className: 'rescue-marker',
+                            html: `<div style="background: linear-gradient(135deg, ${colors[idx%colors.length]} 0%, #fff 100%); width: 45px; height: 45px; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: black; font-weight: bold; font-size: 26px; border: 4px solid white; box-shadow: 0 4px 15px rgba(255,193,7,0.7); animation: rescueMove 1.5s infinite ease-in-out;">🚚</div>`,
+                            iconSize: [45, 45],
+                            iconAnchor: [22, 22]
+                        });
+                        const rescueMarker = L.marker(routeCoords[0], { icon: rescueIcon }).addTo(map);
+                        rescueMarker.bindPopup(`
+                            <div style="text-align: center; min-width: 300px;">
+                                <h4>🟡 Rescue Truck - ${rescuer.rescue_truck_id}</h4>
+                                <div style="background: #fff3cd; padding: 0.5rem; border-radius: 4px; margin: 0.5rem 0; border-left: 4px solid ${colors[idx%colors.length]};">
+                                    <strong>🎯 Target:</strong> ${failedTruckId}<br>
+                                    <strong>🚚 Load Share:</strong> ${rescuer.load_percent}%<br>
+                                </div>
+                            </div>
+                        `);
+                        // Add hover tooltip
+                        rescueMarker.bindTooltip(`Rescue Truck: ${rescuer.rescue_truck_id} | Target: ${failedTruckId} | Load: ${rescuer.load_percent}%`, {direction: 'top', offset: [0, -20]});
+                        markers[`rescue_${rescuer.rescue_truck_id}`] = rescueMarker;
+                        // Draw the rescue route
+                        const routeLine = L.polyline(routeCoords, {
+                            color: colors[idx%colors.length],
+                            weight: 8,
+                            opacity: 0.9,
+                            dashArray: '20, 10',
+                            dashOffset: '0',
+                            lineCap: 'round'
+                        }).addTo(map);
+                        let offset = 0;
+                        const animateRoute = setInterval(() => {
+                            offset = (offset + 2) % 30;
+                            routeLine.setStyle({ dashOffset: offset + 'px' });
+                        }, 80);
+                        routeLine._animationInterval = animateRoute;
+                        routeLines[`${failedTruckId}_${rescuer.rescue_truck_id}`] = routeLine;
+                        // Add arrow marker along the route
+                        const p0 = routeCoords[0];
+                        const p1 = routeCoords[routeCoords.length - 1];
+                        const midLat = p0[0] + 0.5 * (p1[0] - p0[0]);
+                        const midLng = p0[1] + 0.5 * (p1[1] - p0[1]);
+                        const arrowIcon = L.divIcon({
+                            className: 'route-arrow',
+                            html: `<div style="color: ${colors[idx%colors.length]}; font-size: 24px; text-shadow: 2px 2px 4px rgba(0,0,0,0.5); animation: arrowPulse 1s infinite ease-in-out;">➤</div>`,
+                            iconSize: [24, 24],
+                            iconAnchor: [12, 12]
+                        });
+                        const arrowMarker = L.marker([midLat, midLng], { icon: arrowIcon }).addTo(map);
+                        markers[`arrow_${failedTruckId}_${rescuer.rescue_truck_id}`] = arrowMarker;
+                    });
+                    // Place failed truck marker at end of first route
+                    const firstRoute = rescue.rescuers[0].route.route_coordinates;
                     const failedIcon = L.divIcon({
                         className: 'failed-marker',
-                    html: `<div style="background: #dc3545; width: 40px; height: 40px; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: white; font-weight: bold; font-size: 18px; border: 3px solid white; box-shadow: 0 3px 10px rgba(220,53,69,0.5); animation: sosFlash 1s infinite;">🆘</div>`,
+                        html: `<div style="background: #dc3545; width: 40px; height: 40px; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: white; font-weight: bold; font-size: 18px; border: 3px solid white; box-shadow: 0 3px 10px rgba(220,53,69,0.5); animation: sosFlash 1s infinite;">🆘</div>`,
                         iconSize: [40, 40],
                         iconAnchor: [20, 20]
                     });
-                const failedMarker = L.marker(routeCoords[routeCoords.length - 1], { icon: failedIcon }).addTo(map);
+                    const failedMarker = L.marker(firstRoute[firstRoute.length - 1], { icon: failedIcon }).addTo(map);
+                    failedMarker.bindPopup(`
+                        <div style="text-align: center;">
+                        <h4>🆘 ${failedTruckId} - FAILED</h4>
+                            <p style="color: #dc3545;"><strong>AWAITING RESCUE (Multi-Truck)</strong></p>
+                        </div>
+                    `);
+                    // Add hover tooltip
+                    failedMarker.bindTooltip(`Failed Truck: ${failedTruckId} | Awaiting Multi-Truck Rescue`, {direction: 'top', offset: [0, -20]});
+                    markers[`failed_${failedTruckId}`] = failedMarker;
+                } else {
+                    // --- Single-truck rescue ---
+                    const routeCoords = rescue.route && rescue.route.route_coordinates;
+                    if (!routeCoords || routeCoords.length < 2) return;
+                    // Place rescue truck marker at start of route
+                    const rescueIcon = L.divIcon({
+                        className: 'rescue-marker',
+                        html: `<div style="background: linear-gradient(135deg, #ffc107 0%, #ff9800 100%); width: 45px; height: 45px; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: black; font-weight: bold; font-size: 26px; border: 4px solid white; box-shadow: 0 4px 15px rgba(255,193,7,0.7); animation: rescueMove 1.5s infinite ease-in-out;">🚑</div>`,
+                        iconSize: [45, 45],
+                        iconAnchor: [22, 22]
+                    });
+                    const rescueMarker = L.marker(routeCoords[0], { icon: rescueIcon }).addTo(map);
+                    rescueMarker.bindPopup(`
+                            <div style="text-align: center; min-width: 300px;">
+                                <h4>🚑 Rescue Truck - RESCUE UNIT</h4>
+                                <div style="background: #fff3cd; padding: 0.5rem; border-radius: 4px; margin: 0.5rem 0; border-left: 4px solid #ffc107;">
+                                    <strong>🎯 Target:</strong> ${failedTruckId}<br>
+                                    <strong>⏱️ ETA:</strong> ${rescue.eta_minutes} min<br>
+                                    <strong>📍 Distance:</strong> ${rescue.distance_km} km
+                                </div>
+                            </div>
+                        `);
+                    // Add hover tooltip
+                    rescueMarker.bindTooltip(`Rescue Truck: ${rescue.rescue_truck_id} | Target: ${failedTruckId} | ETA: ${rescue.eta_minutes} min`, {direction: 'top', offset: [0, -20]});
+                    markers[`rescue_${rescue.rescue_truck_id}`] = rescueMarker;
+
+                    // Place failed truck marker at end of route
+                    const failedIcon = L.divIcon({
+                        className: 'failed-marker',
+                        html: `<div style="background: #dc3545; width: 40px; height: 40px; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: white; font-weight: bold; font-size: 18px; border: 3px solid white; box-shadow: 0 3px 10px rgba(220,53,69,0.5); animation: sosFlash 1s infinite;">🆘</div>`,
+                        iconSize: [40, 40],
+                        iconAnchor: [20, 20]
+                    });
+                    const failedMarker = L.marker(routeCoords[routeCoords.length - 1], { icon: failedIcon }).addTo(map);
                     failedMarker.bindPopup(`
                         <div style="text-align: center;">
                         <h4>🆘 ${failedTruckId} - FAILED</h4>
                             <p style="color: #dc3545;"><strong>AWAITING RESCUE</strong></p>
                         </div>
                     `);
+                    // Add hover tooltip
+                    failedMarker.bindTooltip(`Failed Truck: ${failedTruckId} | Awaiting Rescue`, {direction: 'top', offset: [0, -20]});
                     markers[`failed_${failedTruckId}`] = failedMarker;
 
-                // Draw the rescue route
+                    // Draw the rescue route
                     const routeLine = L.polyline(routeCoords, {
                         color: '#ffc107',
                         weight: 8,
@@ -492,117 +637,24 @@
                     }, 80);
                     routeLine._animationInterval = animateRoute;
                     routeLines[failedTruckId] = routeLine;
-                    
-                // Add arrow marker along the route
-                const p0 = routeCoords[0];
-                const p1 = routeCoords[routeCoords.length - 1];
-                const midLat = p0[0] + 0.5 * (p1[0] - p0[0]);
-                const midLng = p0[1] + 0.5 * (p1[1] - p0[1]);
+                    // Add arrow marker along the route
+                    const p0 = routeCoords[0];
+                    const p1 = routeCoords[routeCoords.length - 1];
+                    const midLat = p0[0] + 0.5 * (p1[0] - p0[0]);
+                    const midLng = p0[1] + 0.5 * (p1[1] - p0[1]);
                     const arrowIcon = L.divIcon({
                         className: 'route-arrow',
-                    html: `<div style="color: #ffc107; font-size: 24px; text-shadow: 2px 2px 4px rgba(0,0,0,0.5); animation: arrowPulse 1s infinite ease-in-out;">➤</div>`,
+                        html: `<div style="color: #ffc107; font-size: 24px; text-shadow: 2px 2px 4px rgba(0,0,0,0.5); animation: arrowPulse 1s infinite ease-in-out;">➤</div>`,
                         iconSize: [24, 24],
                         iconAnchor: [12, 12]
                     });
                     const arrowMarker = L.marker([midLat, midLng], { icon: arrowIcon }).addTo(map);
                     markers[`arrow_${failedTruckId}`] = arrowMarker;
+                }
             });
         }
         
-        // Generate demo rescue data
-        function generateDemoRescueData() {
-            return {
-                trucks: [
-                    { truck_id: 'MH01', status: 'failed', temperature: 11.3, battery: 45, location: { lat: 19.0596, lng: 72.8295 }, failure_reason: 'Cold Chain Breach', rescuer_id: 'MH02' },
-                    { truck_id: 'MH02', status: 'rescuing', temperature: 6.8, battery: 78, location: { lat: 19.1197, lng: 72.8464 }, failure_reason: null }
-                ],
-                rescues: {
-                    'MH01': {
-                        rescue_truck_id: 'MH02',
-                        eta_minutes: 18,
-                        distance_km: 12.5,
-                        route: [
-                            [19.1197, 72.8464],
-                            [19.0896, 72.8380],
-                            [19.0596, 72.8295]
-                        ]
-                    }
-                }
-            };
-        }
-        
-        // Update status banner
-        function updateStatus(message) {
-            document.getElementById('status').textContent = message;
-        }
-        
-        // Add log entry
-        function addLog(message) {
-            const logs = document.getElementById('logs');
-            const entry = document.createElement('div');
-            entry.textContent = `${new Date().toLocaleTimeString()} - ${message}`;
-            logs.appendChild(entry);
-            logs.scrollTop = logs.scrollHeight;
-            
-            // Keep only last 8 logs
-            while (logs.children.length > 8) {
-                logs.removeChild(logs.firstChild);
-            }
-        }
-        
-        // Open normal operations view
-        function openNormalView() {
-            window.open('/normal_ops', '_blank');
-        }
-        
-        // Refresh map
-        function refreshMap() {
-            if (map) {
-                map.invalidateSize();
-                fetchRescueData();
-            } else {
-                initMap();
-            }
-        }
-        
-        // Initialize when page loads
-        document.addEventListener('DOMContentLoaded', function() {
-            console.log('🚀 Starting rescue operations monitoring...');
-            addLog('Rescue system initializing...');
-            addLog('Loading active rescue operations...');
-            
-            setTimeout(() => {
-                initMap();
-            }, 500);
-        });
-        
-        // Add animations for rescue operations
-        const style = document.createElement('style');
-        style.textContent = `
-            @keyframes sosFlash {
-                0% { transform: scale(1); box-shadow: 0 3px 10px rgba(220,53,69,0.5); }
-                50% { transform: scale(1.15); box-shadow: 0 6px 25px rgba(220,53,69,0.9); }
-                100% { transform: scale(1); box-shadow: 0 3px 10px rgba(220,53,69,0.5); }
-            }
-            @keyframes rescueMove {
-                0% { transform: scale(1) rotate(0deg); box-shadow: 0 4px 15px rgba(255,193,7,0.7); }
-                25% { transform: scale(1.1) rotate(-3deg); box-shadow: 0 6px 20px rgba(255,193,7,0.9); }
-                50% { transform: scale(1.15) rotate(0deg); box-shadow: 0 8px 25px rgba(255,193,7,1.0); }
-                75% { transform: scale(1.1) rotate(3deg); box-shadow: 0 6px 20px rgba(255,193,7,0.9); }
-                100% { transform: scale(1) rotate(0deg); box-shadow: 0 4px 15px rgba(255,193,7,0.7); }
-            }
-            @keyframes arrowPulse {
-                0% { transform: scale(1) rotate(0deg); opacity: 0.8; }
-                50% { transform: scale(1.3) rotate(5deg); opacity: 1.0; }
-                100% { transform: scale(1) rotate(0deg); opacity: 0.8; }
-            }
-            @keyframes pulse {
-                0% { transform: scale(1); }
-                50% { transform: scale(1.05); }
-                100% { transform: scale(1); }
-            }
-        `;
-        document.head.appendChild(style);
+        window.onload = initMap;
     </script>
 </body>
 </html>

@@ -79,6 +79,7 @@ predictive_trend_history = {}
 truck_095_demo_start_time = None
 truck_095_alert_triggered = False
 truck_095_failed = False
+manual_failure_count = 0
 
 # Pydantic models
 class TruckStatus(BaseModel):
@@ -179,7 +180,7 @@ def initialize_system():
         print(f"✅ Loaded {len(delivery_points)} delivery points")
         
         # Initialize demo with subset of trucks
-        demo_trucks = list(trucks.keys())[:7]  # Use first 7 trucks for demo
+        demo_trucks = list(trucks.keys())[:9]  # Use first 9 trucks for demo
         trucks = {k: trucks[k] for k in demo_trucks}
         print(f"Demo initialized with {len(trucks)} trucks and {len(delivery_points)} delivery points")
         
@@ -220,7 +221,7 @@ def simulate_temperature_drift():
                 truck['predictive_temp_alert'] = True
                 # Log only once per session
                 if not any('temp rising' in l and truck_id in l for l in system_logs[-5:]):
-                    log_msg = f"{datetime.now().strftime('%H:%M:%S')} 🔶 Predictive alert: {truck_id} temp rising fast (demo mode)"
+                    log_msg = f"{datetime.now().strftime('%H:%M:%S')} Predictive alert: {truck_id} temperature rising fast (demo mode)."
                     system_logs.append(log_msg)
 
             # --- Predictive Alert Demo Logic for TRUCK_095 ---
@@ -233,13 +234,14 @@ def simulate_temperature_drift():
                     elapsed = (now - truck['demo_start_time']).total_seconds()
                     if elapsed > 3 and not truck.get('predictive_temp_alert', False):
                         truck['predictive_temp_alert'] = True
-                        log_msg = f"{now.strftime('%H:%M:%S')} 🔶 Predictive alert: {truck_id} temp rising fast (demo mode)"
+                        log_msg = f"{now.strftime('%H:%M:%S')} Predictive alert: {truck_id} temperature rising fast (demo mode)."
                         system_logs.append(log_msg)
                     if elapsed > 6 and truck['predictive_temp_alert']:
                         truck['status'] = "failed"
                         truck['failure_reason'] = "Demo: Temperature rising fast (predictive alert)"
+                        truck['temperature'] = random.uniform(12.0, 14.0)  # Set temp above 10C for demo
                         truck['predictive_temp_alert'] = False
-                        log_msg = f"{now.strftime('%H:%M:%S')} 🚨 Demo: {truck_id} auto-failed after predictive alert."
+                        log_msg = f"{now.strftime('%H:%M:%S')} Demo: {truck_id} auto-failed after predictive alert."
                         system_logs.append(log_msg)
                         # Trigger rescue for demo (threadsafe)
                         global main_event_loop
@@ -256,7 +258,7 @@ def simulate_temperature_drift():
                             future.add_done_callback(rescue_callback)
                         else:
                             logger.error("[DEBUG] main_event_loop is None, cannot schedule trigger_rescue!")
-                            system_logs.append(f"{datetime.now().strftime('%H:%M:%S')} - [DEBUG] main_event_loop is None, cannot schedule trigger_rescue!")
+                            system_logs.append(f"{datetime.now().strftime('%H:%M:%S')} - [DEBUG] main_event_loop is None, cannot schedule_trigger_rescue!")
             # Reset timer if not operational
             if truck_id == "TRUCK_095" and truck['status'] != "operational":
                 truck['demo_start_time'] = None
@@ -346,7 +348,7 @@ def simulate_recovery():
                                 stop['delivery_status'] = 'interrupted'
                         # Optionally, log for reallocation
                         if stops_remaining:
-                            system_logs.append(f"{now.strftime('%H:%M:%S')} - 🚨 Deliveries for {truck_id} marked as interrupted and need reassignment.")
+                            system_logs.append(f"{now.strftime('%H:%M:%S')} - Deliveries for {truck_id} marked as interrupted and need reassignment.")
                     else:
                         # If not a list, just clear it
                         trucks[truck_id]['stopsRemaining'] = []
@@ -358,10 +360,9 @@ def simulate_recovery():
                 # Clear rescue route
                 if truck_id in rescue_routes:
                     del rescue_routes[truck_id]
-                log_msg = f"✅ RESCUE COMPLETE: {rescuer_id} successfully rescued {truck_id}"
+                log_msg = f"Rescue complete: {rescuer_id} rescued {truck_id}."
                 logger.info(log_msg)
                 system_logs.append(f"{now.strftime('%H:%M:%S')} - {log_msg}")
-                system_logs.append(f"{now.strftime('%H:%M:%S')} - 💰 Estimated spoilage prevented: ₹{random.randint(80000, 180000):,}")
         # Bring rescued truck back to operational after cooldown
         if truck['status'] == 'rescued' and truck.get('rescue_completed_time'):
             elapsed = (now - truck['rescue_completed_time']).total_seconds()
@@ -373,7 +374,7 @@ def simulate_recovery():
                 truck['rescuer_id'] = None
                 truck['rescue_completed_time'] = None
                 # DO NOT change truck['lat'] or truck['lng']
-                system_logs.append(f"{now.strftime('%H:%M:%S')} - 🚚 Truck {truck_id} returned to service at last delivery/failure point.")
+                system_logs.append(f"{now.strftime('%H:%M:%S')} - Truck {truck_id} returned to service at last delivery/failure point.")
 
 # Background simulation thread - MANUAL TRIGGER ONLY
 def run_simulation():
@@ -411,10 +412,18 @@ async def get_truck_status():
     for truck_id, truck in trucks.items():
         if truck['status'] in ["rescued", "inactive", "retired"]:
             continue
+        # Clamp temperature to 10.0 unless failed due to temperature breach
+        temp = truck['temperature']
+        if truck['status'] == 'failed' and truck['failure_reason'] and (
+            'Temperature' in truck['failure_reason'] or 'Cold Chain Breach' in truck['failure_reason']):
+            # Show real temp for temp failures
+            display_temp = round(temp, 1)
+        else:
+            display_temp = min(round(temp, 1), 10.0)
         status = {
             'truck_id': truck_id,
             'status': truck['status'],
-            'temperature': round(truck['temperature'], 1),
+            'temperature': display_temp,
             'battery': round(truck['battery'], 1),
             'location': {'lat': truck['lat'], 'lng': truck['lng']},
             'failure_reason': truck['failure_reason'],
@@ -449,7 +458,7 @@ async def get_delivery_points():
 
 @app.post("/force_failure/{truck_id}")
 async def force_truck_failure(truck_id: str, request: Request):
-    global trucks, system_logs
+    global trucks, system_logs, manual_failure_count
     user = "unknown"
     try:
         data = await request.json()
@@ -462,10 +471,50 @@ async def force_truck_failure(truck_id: str, request: Request):
     if truck['status'] == "operational":
         truck['status'] = "failed"
         truck['failure_reason'] = "Manual Failure (Demo)"
-        log_msg = f"🚨 Truck {truck_id} manually failed for demo by {user}"
+        log_msg = f"Truck {truck_id} manually failed for demo by {user}."
         logger.info(log_msg)
         system_logs.append(f"{datetime.now().strftime('%H:%M:%S')} - {log_msg}")
-        # Trigger rescue
+        manual_failure_count += 1
+        # On the second manual failure, force a multi-truck rescue and log details
+        if manual_failure_count == 2:
+            # Force the failed truck's load to be high and all others' capacity zero except two rescuers
+            truck['load'] = 100
+            truck['capacityAvailable'] = 100
+            truck['totalCapacity'] = 100
+            # Find two available rescue trucks (not the failed one)
+            available_trucks = [t for t in trucks.values() if t['id'] != truck_id and t['status'] == 'operational']
+            if len(available_trucks) >= 2:
+                rescuer1, rescuer2 = available_trucks[:2]
+                rescuer1['capacityAvailable'] = 60
+                rescuer1['totalCapacity'] = 60
+                rescuer2['capacityAvailable'] = 40
+                rescuer2['totalCapacity'] = 40
+                # Set all other trucks' capacity to zero
+                for t in trucks.values():
+                    if t['id'] not in [truck_id, rescuer1['id'], rescuer2['id']]:
+                        t['capacityAvailable'] = 0
+                        t['totalCapacity'] = 0
+                # Trigger rescue and log multi-rescue details
+                rescue_result = await trigger_rescue(truck_id)
+                if rescue_result.get('multi_rescue') and 'rescuers' in rescue_result:
+                    rescuer_ids = [rescuer['rescue_truck_id'] for rescuer in rescue_result['rescuers']]
+                    now = datetime.now()
+                    system_logs.append(f"{now.strftime('%H:%M:%S')} 🔄 Multi-rescue initiated: {rescuer_ids[0]} (60%) + {rescuer_ids[1]} (40%)")
+                    # Simulate log times for each rescuer
+                    system_logs.append(f"{(now + timedelta(seconds=10)).strftime('%H:%M:%S')} 🟡 {rescuer_ids[0]} collecting 60% of batch")
+                    system_logs.append(f"{(now + timedelta(seconds=12)).strftime('%H:%M:%S')} 🟡 {rescuer_ids[1]} collecting 40% of batch")
+                # --- RESTORE ALL TRUCKS' CAPACITY TO DEFAULT AFTER DEMO ---
+                for t in trucks.values():
+                    t['capacityAvailable'] = 100
+                    t['totalCapacity'] = 100
+                # --- END RESTORE ---
+                return {"success": True, "message": f"Truck {truck_id} forced to fail (multi-rescue demo)"}
+            else:
+                log_msg = f"[DEMO] Not enough available trucks for forced multi-truck rescue."
+                logger.warning(log_msg)
+                system_logs.append(f"{datetime.now().strftime('%H:%M:%S')} - {log_msg}")
+                return {"success": False, "message": "Not enough available trucks for multi-rescue demo"}
+        # Otherwise, normal single rescue
         await trigger_rescue(truck_id)
         return {"success": True, "message": f"Truck {truck_id} forced to fail"}
     else:
@@ -524,7 +573,7 @@ async def run_rescue():
     }
 
 async def trigger_rescue(failed_truck_id: str):
-    """AUTOMATIC RESCUE DISPATCH - 6-factor scoring algorithm."""
+    """AUTOMATIC RESCUE DISPATCH - 6-factor scoring algorithm, now supports multi-truck rescue."""
     global trucks, rescue_logic, ors_client, rescue_routes, system_logs
     
     logger.info(f"[DEBUG] trigger_rescue called for {failed_truck_id}")
@@ -541,7 +590,45 @@ async def trigger_rescue(failed_truck_id: str):
                        if truck['status'] == "operational" and truck_id != failed_truck_id]
     logger.info(f"[DEBUG] Available trucks for rescue: {[t['id'] for t in available_trucks]}")
     system_logs.append(f"{datetime.now().strftime('%H:%M:%S')} - [DEBUG] Available trucks: {[t['id'] for t in available_trucks]}")
-    
+
+    # --- MULTI-TRUCK RESCUE LOGIC ---
+    # If the failed truck's load is too high for any single truck, use multi-truck rescue
+    multi_rescue_result = None
+    try:
+        multi_rescue_result = rescue_logic.multi_truck_rescue(failed_truck, available_trucks, delivery_points)
+    except Exception as e:
+        logger.error(f"[DEBUG] Exception in multi_truck_rescue: {e}")
+        system_logs.append(f"{datetime.now().strftime('%H:%M:%S')} - [DEBUG] Exception in multi_truck_rescue: {e}")
+        # Suppress error: fallback to single-truck rescue
+        multi_rescue_result = None
+
+    if multi_rescue_result and multi_rescue_result.get("multi_rescue", False):
+        # Multi-truck rescue: update rescue_routes with both rescuers
+        rescuers = multi_rescue_result["rescuers"]
+        rescue_routes[failed_truck_id] = {
+            "multi_rescue": True,
+            "rescuers": rescuers,
+            "timestamp": datetime.now().isoformat()
+        }
+        # Mark both rescuers as rescuing
+        for rescuer in rescuers:
+            rid = rescuer["rescue_truck_id"]
+            if rid in trucks:
+                trucks[rid]["status"] = "rescuing"
+        # Link rescuers to failed truck
+        failed_truck["rescuer_id"] = [rescuer["rescue_truck_id"] for rescuer in rescuers]
+        log_msg = f"Multi-truck rescue dispatched: {[rescuer['rescue_truck_id'] for rescuer in rescuers]} to {failed_truck_id} (ETA: {[rescuer['eta_minutes'] for rescuer in rescuers]}min)"
+        logger.info(log_msg)
+        system_logs.append(f"{datetime.now().strftime('%H:%M:%S')} - {log_msg}")
+        return {
+            "success": True,
+            "multi_rescue": True,
+            "rescuers": rescuers,
+            "message": "Multi-truck rescue dispatched successfully"
+        }
+    # --- END MULTI-TRUCK RESCUE LOGIC ---
+
+    # Fallback to single-truck rescue
     best_rescue_truck = rescue_logic.find_best_rescue_truck(failed_truck, available_trucks)
     logger.info(f"[DEBUG] Best rescue truck: {best_rescue_truck['id'] if best_rescue_truck else None}")
     system_logs.append(f"{datetime.now().strftime('%H:%M:%S')} - [DEBUG] Best rescue truck: {best_rescue_truck['id'] if best_rescue_truck else None}")
@@ -577,10 +664,10 @@ async def trigger_rescue(failed_truck_id: str):
         # Link trucks for rescue completion tracking
         failed_truck['rescuer_id'] = rescue_truck_id
         
-        log_msg = f"🚑 RESCUE DISPATCHED: {rescue_truck_id} → {failed_truck_id} (ETA: {eta_minutes}min, {distance_km:.1f}km)"
+        log_msg = f"Rescue dispatched: {rescue_truck_id} to {failed_truck_id} (ETA: {eta_minutes}min, {distance_km:.1f}km)"
         logger.info(log_msg)
         system_logs.append(f"{datetime.now().strftime('%H:%M:%S')} - {log_msg}")
-        system_logs.append(f"{datetime.now().strftime('%H:%M:%S')} - 📊 6-factor scoring: Distance, battery, capacity, reliability optimized")
+        system_logs.append(f"{datetime.now().strftime('%H:%M:%S')} - 6-factor scoring: Distance, battery, capacity, reliability optimized.")
         
         return {
             "success": True,
@@ -608,7 +695,7 @@ async def get_rescue_routes():
 async def get_system_logs():
     """Get system logs."""
     global system_logs
-    return {"logs": system_logs[-10:]}
+    return {"logs": system_logs}
 
 @app.post("/start_simulation")
 async def start_simulation():
@@ -622,9 +709,11 @@ async def start_simulation():
     simulation_thread = threading.Thread(target=run_simulation, daemon=True)
     simulation_thread.start()
     
-    log_msg = "🚀 Automatic simulation started"
+    log_msg = "System online in manual trigger mode."
     logger.info(log_msg)
     system_logs.append(f"{datetime.now().strftime('%H:%M:%S')} - {log_msg}")
+    system_logs.append(f"{datetime.now().strftime('%H:%M:%S')} - Fleet ready: {len(trucks)} trucks across Mumbai.")
+    system_logs.append(f"{datetime.now().strftime('%H:%M:%S')} - Use manual triggers on homepage for failures.")
     
     return {"success": True, "message": "Simulation started"}
 
@@ -685,20 +774,22 @@ async def rescue_ops():
 
 @app.get("/admin_override")
 async def admin_override_page():
-    file_path = os.path.join(os.path.dirname(__file__), "admin_override.html")
-    print("Resolved file path:", file_path)
-    print("File exists:", os.path.exists(file_path))
+    # Serve the custom admin override panel
     try:
-        with open(file_path, "r", encoding="utf-8") as f:
+        with open("admin_override.html", "r", encoding="utf-8") as f:
             content = f.read()
-        return HTMLResponse(content=content)
+        response = HTMLResponse(content=content)
+        response.headers["Access-Control-Allow-Origin"] = "*"
+        response.headers["Access-Control-Allow-Methods"] = "GET, POST, OPTIONS"
+        response.headers["Access-Control-Allow-Headers"] = "*"
+        return response
     except Exception as e:
         print("Error:", e)
         return HTMLResponse(content="<h1>Admin Override page not found</h1>")
 
 @app.post("/admin_override")
 async def admin_override(request: Request):
-    global trucks, system_logs
+    global trucks, system_logs, rescue_routes, delivery_points, rescue_logic
     data = await request.json()
     failed_truck_id = data.get("failed_truck_id")
     rescue_truck_id = data.get("rescue_truck_id")
@@ -713,12 +804,29 @@ async def admin_override(request: Request):
         return {"success": False, "message": "Selected truck is not failed."}
     if rescue_truck["status"] != "operational":
         return {"success": False, "message": "Selected rescue truck is not operational."}
-    # Force assign
+    # Force assign: set rescuer, mark rescue truck as rescuing
     failed_truck["rescuer_id"] = rescue_truck_id
-    log_msg = f"🛠️ ADMIN OVERRIDE by {user}: {failed_truck_id} → rescue {rescue_truck_id} (manual)"
-    system_logs.append(f"{datetime.now().strftime('%H:%M:%S')} - {log_msg}")
-    # Optionally, update rescue_routes or other state here
-    return {"success": True, "message": "Override successful."}
+    rescue_truck["status"] = "rescuing"
+    # Generate rescue route and ETA
+    try:
+        route = rescue_logic.generate_rescue_route(rescue_truck, failed_truck, delivery_points)
+        distance_km = random.uniform(8.5, 25.3)
+        eta_minutes = int(distance_km * random.uniform(2.2, 3.8))
+        rescue_routes[failed_truck_id] = {
+            "rescue_truck_id": rescue_truck_id,
+            "route": route,
+            "eta_minutes": eta_minutes,
+            "distance_km": round(distance_km, 1),
+            "timestamp": datetime.now().isoformat()
+        }
+        log_msg = f"{datetime.now().strftime('%H:%M:%S')} ADMIN OVERRIDE: {failed_truck_id} → rescue {rescue_truck_id} (manual)"
+        system_logs.append(log_msg)
+        system_logs.append(f"{datetime.now().strftime('%H:%M:%S')} - Admin override: {rescue_truck_id} dispatched to {failed_truck_id} (ETA: {eta_minutes}min, {distance_km:.1f}km)")
+        return {"success": True, "message": "Override successful. Rescue dispatched."}
+    except Exception as e:
+        error_msg = f"Admin override failed to generate route: {e}"
+        system_logs.append(f"{datetime.now().strftime('%H:%M:%S')} - {error_msg}")
+        return {"success": False, "message": error_msg}
 
 @app.get("/metrics")
 async def get_metrics():
@@ -734,10 +842,6 @@ async def get_metrics():
     # Temperature and battery stats
     temps = [truck['temperature'] for truck in active_trucks]
     batteries = [truck['battery'] for truck in active_trucks]
-    
-    # Calculate spoilage prevented (rough estimate)
-    rescues_completed = len([log for log in system_logs if "rescued by" in log])
-    spoilage_prevented = rescues_completed * random.uniform(50000, 150000)  # ₹50k-150k per rescue
     
     return {
         "fleet_status": {
@@ -760,8 +864,7 @@ async def get_metrics():
         },
         "rescue_stats": {
             "active_rescues": len(rescue_routes),
-            "completed_rescues": rescues_completed,
-            "spoilage_prevented_inr": round(spoilage_prevented, 0)
+            "completed_rescues": len([log for log in system_logs if "rescued by" in log]),
         },
         "system_health": {
             "simulation_running": simulation_running,
@@ -776,10 +879,42 @@ try:
 except:
     pass
 
+def random_mumbai_land_location():
+    # Mumbai land mask: only allow locations east of Mumbai coastline and not in the sea
+    # Use a set of known safe land points for fallback
+    safe_land_points = [
+        {"lat": 19.0760, "lng": 72.8777},  # Mumbai Central
+        {"lat": 19.1197, "lng": 72.8464},  # Andheri
+        {"lat": 19.0544, "lng": 72.9005},  # Chembur
+        {"lat": 19.1593, "lng": 72.8478},  # Goregaon
+        {"lat": 19.2183, "lng": 72.9781},  # Thane
+        {"lat": 19.0330, "lng": 73.0297},  # Navi Mumbai
+        {"lat": 19.0170, "lng": 72.8478},  # Dadar
+        {"lat": 18.9647, "lng": 72.8258},  # South Mumbai
+    ]
+    for _ in range(2000):
+        lat = random.uniform(18.95, 19.25)
+        lng = random.uniform(72.83, 72.99)
+        # Strict land mask: only allow points east of Mumbai coastline
+        if lng < 72.85:
+            continue
+        if lat < 19.00 and lng < 72.87:
+            continue
+        if lat < 18.98 and lng > 72.92:
+            continue
+        if lat > 19.22 and lng < 72.88:
+            continue
+        if 19.00 < lat < 19.10 and 72.90 < lng < 73.00:
+            continue
+        # Only return if within Mumbai land area
+        if 18.95 <= lat <= 19.25 and 72.85 <= lng <= 72.99:
+            return {"lat": lat, "lng": lng}
+    # Fallback: pick a random known land point
+    return random.choice(safe_land_points)
+
 def random_mumbai_location():
-    lat = random.uniform(18.90, 19.30)
-    lng = random.uniform(72.75, 72.95)
-    return {"lat": lat, "lng": lng}
+    # Use the same land mask for all random truck locations (no sea)
+    return random_mumbai_land_location()
 
 def start_demo_scenario():
     """Initialize fleet with manual trigger capability."""
@@ -798,11 +933,11 @@ def start_demo_scenario():
     simulation_thread = threading.Thread(target=run_simulation, daemon=True)
     simulation_thread.start()
     
-    log_msg = "🚛 Mumbai Cold Chain System ONLINE - Manual trigger mode"
+    log_msg = "System online in manual trigger mode."
     logger.info(log_msg)
     system_logs.append(f"{datetime.now().strftime('%H:%M:%S')} - {log_msg}")
-    system_logs.append(f"{datetime.now().strftime('%H:%M:%S')} - 📊 Fleet ready: {len(trucks)} trucks across Mumbai")
-    system_logs.append(f"{datetime.now().strftime('%H:%M:%S')} - 🔧 Use manual triggers on homepage for failures")
+    system_logs.append(f"{datetime.now().strftime('%H:%M:%S')} - Fleet ready: {len(trucks)} trucks across Mumbai.")
+    system_logs.append(f"{datetime.now().strftime('%H:%M:%S')} - Use manual triggers on homepage for failures")
 
 # Call demo scenario after system init
 initialize_system()
@@ -965,7 +1100,7 @@ async def trigger_specific_failure(failure_type: str):
         truck_obj = TruckObj(truck)
         scenario['effect'](truck_obj)
     
-    log_msg = f"🚨 MANUAL TRIGGER: {truck_id} - {scenario['reason']}"
+    log_msg = f"Manual trigger: {truck_id} - {scenario['reason']}."
     logger.info(log_msg)
     system_logs.append(f"{datetime.now().strftime('%H:%M:%S')} - {log_msg}")
     
@@ -973,7 +1108,7 @@ async def trigger_specific_failure(failure_type: str):
     try:
         result = await trigger_rescue(truck_id)
         if result.get('success'):
-            rescue_log = f"🚑 AUTO-RESCUE: {result['rescue_truck_id']} dispatched to {truck_id}"
+            rescue_log = f"Rescue: {result['rescue_truck_id']} dispatched to {truck_id}"
             system_logs.append(f"{datetime.now().strftime('%H:%M:%S')} - {rescue_log}")
             
             # Mark rescue truck as rescuing
@@ -981,9 +1116,39 @@ async def trigger_specific_failure(failure_type: str):
             if rescue_truck_id in trucks:
                 trucks[rescue_truck_id]['status'] = 'rescuing'
     except Exception as e:
-        error_log = f"❌ Auto-rescue failed for {truck_id}: {e}"
+        error_log = f"Auto-rescue failed for {truck_id}: {e}"
         logger.error(error_log)
         system_logs.append(f"{datetime.now().strftime('%H:%M:%S')} - {error_log}")
+    
+    # --- DEMO: Force multi-truck rescue on second manual failure trigger ---
+    # Use a static variable to count manual failures
+    if not hasattr(trigger_specific_failure, 'manual_fail_count'):
+        trigger_specific_failure.manual_fail_count = 0
+    trigger_specific_failure.manual_fail_count += 1
+
+    # On the second manual failure, force a real multi-truck rescue scenario
+    if trigger_specific_failure.manual_fail_count == 2:
+        # Set failed truck's load high
+        truck['load'] = 200
+        # Place failed truck at a Mumbai land location (improved mask)
+        land_loc = random_mumbai_land_location()
+        truck['location'] = land_loc
+        # Pick two real, available trucks (not the failed one)
+        available_trucks = [t for tid, t in trucks.items() if tid != truck_id and t['status'] == 'operational']
+        if len(available_trucks) >= 2:
+            rescuer1, rescuer2 = available_trucks[:2]
+            rescuer1['capacityAvailable'] = 120
+            rescuer2['capacityAvailable'] = 100
+            rescuer1['status'] = 'rescuing'
+            rescuer2['status'] = 'rescuing'
+            log_msg = f"[DEMO] Forced multi-truck rescue: {truck_id} load=200, rescuers={rescuer1['id']}, {rescuer2['id']} (120/100)"
+            logger.info(log_msg)
+            system_logs.append(f"{datetime.now().strftime('%H:%M:%S')} - {log_msg}")
+        else:
+            log_msg = f"[DEMO] Not enough available trucks for forced multi-truck rescue."
+            logger.warning(log_msg)
+            system_logs.append(f"{datetime.now().strftime('%H:%M:%S')} - {log_msg}")
+    # --- END DEMO ---
     
     return {
         "success": True, 

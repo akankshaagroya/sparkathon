@@ -2,142 +2,190 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Admin Override - Mumbai Cold Chain</title>
-    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <title>Admin Override – Mumbai Cold Chain Rescue Manager</title>
     <style>
-        body { background: #f0f2f5; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; }
-        .header { background: linear-gradient(135deg, #2c3e50 0%, #3498db 100%); color: white; padding: 1.5rem; text-align: center; }
-        .header h1 { font-size: 2rem; margin-bottom: 0.5rem; }
-        .container { max-width: 1200px; margin: 2rem auto; background: white; border-radius: 12px; box-shadow: 0 4px 20px rgba(0,0,0,0.1); padding: 2rem; }
-        #map { height: 400px; width: 100%; border-radius: 8px; margin-bottom: 2rem; }
-        .panel { margin-bottom: 2rem; }
-        .panel h3 { margin-bottom: 1rem; }
-        .panel-controls { display: flex; gap: 1rem; align-items: center; }
-        .panel-controls select, .panel-controls button { padding: 0.5rem 1rem; font-size: 1rem; border-radius: 6px; border: 1px solid #ccc; }
-        .panel-controls button { background: #222; color: white; border: none; cursor: pointer; font-weight: 600; }
-        .panel-controls span { margin-left: 1rem; color: #007bff; }
-        .logs { background: #f8f9fa; padding: 1rem; border-radius: 4px; height: 200px; overflow-y: auto; font-family: monospace; font-size: 0.9rem; border: 1px solid #ddd; }
+        body {
+            font-family: 'Segoe UI', Arial, sans-serif;
+            background: #f7f9fa;
+            margin: 0;
+            padding: 0;
+        }
+        .admin-panel {
+            background: #fffbe7;
+            border-bottom: 2px solid #e0c97f;
+            padding: 32px 24px 18px 24px;
+            box-shadow: 0 2px 8px #e0c97f33;
+            display: flex;
+            flex-direction: column;
+            align-items: flex-start;
+        }
+        .admin-panel h2 {
+            color: #b48a00;
+            margin-top: 0;
+            margin-bottom: 18px;
+            font-size: 1.5em;
+        }
+        .dropdown-row {
+            display: flex;
+            gap: 18px;
+            margin-bottom: 16px;
+        }
+        label {
+            font-weight: 500;
+            color: #7a5c00;
+        }
+        select {
+            padding: 6px 12px;
+            border-radius: 4px;
+            border: 1px solid #e0c97f;
+            background: #fff;
+            font-size: 1em;
+        }
+        button {
+            background: #b48a00;
+            color: #fff;
+            border: none;
+            border-radius: 4px;
+            padding: 8px 22px;
+            font-size: 1em;
+            font-weight: 600;
+            cursor: pointer;
+            margin-top: 8px;
+            transition: background 0.2s;
+        }
+        button:hover {
+            background: #e0c97f;
+            color: #7a5c00;
+        }
+        .status-message {
+            margin-top: 10px;
+            font-size: 1em;
+            color: #2b4a00;
+            min-height: 22px;
+        }
+        .logs-panel {
+            background: #f3f6f8;
+            border: 1px solid #e0e4e7;
+            border-radius: 6px;
+            margin: 24px 24px 0 24px;
+            padding: 16px 18px;
+            max-width: 600px;
+            font-size: 0.98em;
+            color: #333;
+            min-height: 120px;
+        }
+        .logs-panel h3 {
+            margin-top: 0;
+            font-size: 1.1em;
+            color: #4a4a4a;
+            margin-bottom: 10px;
+        }
+        .log-entry {
+            font-family: 'Fira Mono', 'Consolas', monospace;
+            margin-bottom: 4px;
+            white-space: pre-wrap;
+        }
+        .map-container {
+            margin: 32px 0 0 0;
+            width: 100vw;
+            min-height: 600px;
+        }
+        @media (max-width: 700px) {
+            .admin-panel, .logs-panel { max-width: 98vw; padding: 12px; }
+            .map-container { min-height: 350px; }
+        }
     </style>
 </head>
 <body>
-    <div class="header">
-        <h1>🛠️ Admin Override Panel</h1>
-        <p>Force-assign rescue trucks with full map context</p>
-    </div>
-    <div class="container">
-        <div id="map"></div>
-        <div class="panel">
-            <h3>Override Rescue Assignment</h3>
-            <div class="panel-controls">
-                <select id="failedTruckSelect">
-                    <option value="">Select Failed Truck</option>
-                </select>
-                <select id="rescueTruckSelect">
-                    <option value="">Select Rescue Truck</option>
-                </select>
-                <button id="forceAssignBtn">Force Assign</button>
-                <span id="overrideStatus"></span>
-            </div>
+    <div class="admin-panel">
+        <h2>🛠️ Admin Rescue Override</h2>
+        <div class="dropdown-row">
+            <label for="failed-truck">Failed Truck:</label>
+            <select id="failed-truck"></select>
+            <label for="rescue-truck">Rescue Truck:</label>
+            <select id="rescue-truck"></select>
         </div>
-        <h3>System Logs</h3>
-        <div class="logs" id="logs">Loading system logs...</div>
+        <button id="force-assign">Force Assign Rescue</button>
+        <div class="status-message" id="status-message"></div>
     </div>
-    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <div class="logs-panel" id="logs-panel">
+        <h3>System Logs (last 10)</h3>
+        <div id="logs-list"></div>
+    </div>
+    <div class="map-container">
+        <iframe src="/normal_ops" width="100%" height="600" style="border:none;"></iframe>
+    </div>
     <script>
-        // Map setup (reuse from normal_ops)
-        let map;
-        async function initMap() {
-            map = L.map('map').setView([19.0760, 72.8777], 11);
-            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-                maxZoom: 19,
-                attribution: '© OpenStreetMap'
-            }).addTo(map);
-            await plotTrucks();
+        async function fetchTrucks() {
+            const res = await fetch('/truck_status');
+            const trucks = await res.json();
+            const failed = trucks.filter(t => t.status === 'failed');
+            const operational = trucks.filter(t => t.status === 'operational');
+            return { failed, operational };
         }
-        async function plotTrucks() {
-            const response = await fetch('/truck_status');
-            const trucks = await response.json();
-            trucks.forEach(truck => {
-                let color = truck.status === 'failed' ? 'red' : (truck.status === 'operational' ? 'green' : 'orange');
-                let marker = L.circleMarker([truck.location.lat, truck.location.lng], {
-                    radius: 10,
-                    color: color,
-                    fillColor: color,
-                    fillOpacity: 0.8
-                }).addTo(map);
-                marker.bindPopup(`<b>${truck.truck_id}</b><br>Status: ${truck.status}<br>Temp: ${truck.temperature}°C<br>Battery: ${truck.battery}%`);
+        async function updateDropdowns() {
+            const { failed, operational } = await fetchTrucks();
+            const failedSel = document.getElementById('failed-truck');
+            const rescueSel = document.getElementById('rescue-truck');
+            failedSel.innerHTML = '';
+            rescueSel.innerHTML = '';
+            failed.forEach(t => {
+                const opt = document.createElement('option');
+                opt.value = t.truck_id;
+                opt.textContent = t.truck_id + (t.failure_reason ? ` (${t.failure_reason})` : '');
+                failedSel.appendChild(opt);
+            });
+            operational.forEach(t => {
+                const opt = document.createElement('option');
+                opt.value = t.truck_id;
+                opt.textContent = t.truck_id;
+                rescueSel.appendChild(opt);
             });
         }
-        // Admin Override Panel logic
-        async function populateTruckDropdowns() {
-            try {
-                const response = await fetch('/truck_status');
-                const trucks = await response.json();
-                const failedSelect = document.getElementById('failedTruckSelect');
-                const rescueSelect = document.getElementById('rescueTruckSelect');
-                failedSelect.innerHTML = '<option value="">Select Failed Truck</option>';
-                rescueSelect.innerHTML = '<option value="">Select Rescue Truck</option>';
-                trucks.forEach(truck => {
-                    if (truck.status === 'failed') {
-                        failedSelect.innerHTML += `<option value="${truck.truck_id}">${truck.truck_id}</option>`;
-                    } else if (truck.status === 'operational') {
-                        rescueSelect.innerHTML += `<option value="${truck.truck_id}">${truck.truck_id}</option>`;
-                    }
-                });
-            } catch (error) {}
+        async function fetchLogs() {
+            const res = await fetch('/system_logs');
+            const data = await res.json();
+            return data.logs || [];
         }
-        document.getElementById('forceAssignBtn').onclick = async function() {
-            const failedTruck = document.getElementById('failedTruckSelect').value;
-            const rescueTruck = document.getElementById('rescueTruckSelect').value;
-            const statusSpan = document.getElementById('overrideStatus');
-            if (!failedTruck || !rescueTruck) {
-                statusSpan.textContent = 'Please select both trucks.';
-                statusSpan.style.color = 'red';
+        async function updateLogs() {
+            const logs = await fetchLogs();
+            const logsList = document.getElementById('logs-list');
+            logsList.innerHTML = '';
+            logs.forEach(log => {
+                const div = document.createElement('div');
+                div.className = 'log-entry';
+                div.textContent = log;
+                logsList.appendChild(div);
+            });
+        }
+        document.getElementById('force-assign').onclick = async function() {
+            const failedId = document.getElementById('failed-truck').value;
+            const rescueId = document.getElementById('rescue-truck').value;
+            const statusMsg = document.getElementById('status-message');
+            if (!failedId || !rescueId) {
+                statusMsg.textContent = 'Please select both a failed and a rescue truck.';
                 return;
             }
-            statusSpan.textContent = 'Processing...';
-            statusSpan.style.color = '#007bff';
-            try {
-                const response = await fetch('/admin_override', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ failed_truck_id: failedTruck, rescue_truck_id: rescueTruck })
-                });
-                const data = await response.json();
-                if (data.success) {
-                    statusSpan.textContent = 'Override successful!';
-                    statusSpan.style.color = 'green';
-                    setTimeout(fetchLogs, 1000);
-                    setTimeout(populateTruckDropdowns, 1000);
-                    setTimeout(() => { map.remove(); initMap(); }, 1200);
-                } else {
-                    statusSpan.textContent = data.message || 'Override failed.';
-                    statusSpan.style.color = 'red';
-                }
-            } catch (error) {
-                statusSpan.textContent = 'Error sending override.';
-                statusSpan.style.color = 'red';
+            statusMsg.textContent = 'Processing override...';
+            const res = await fetch('/admin_override', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ failed_truck_id: failedId, rescue_truck_id: rescueId, user: 'admin' })
+            });
+            const data = await res.json();
+            if (data.success) {
+                statusMsg.textContent = 'Override successful!';
+                await updateLogs();
+                await updateDropdowns();
+            } else {
+                statusMsg.textContent = data.message || 'Override failed.';
             }
         };
-        // System logs
-        async function fetchLogs() {
-            try {
-                const response = await fetch('/system_logs');
-                const data = await response.json();
-                const logsDiv = document.getElementById('logs');
-                logsDiv.innerHTML = data.logs.map(log => `<div>${log}</div>`).join('');
-                logsDiv.scrollTop = logsDiv.scrollHeight;
-            } catch (error) {
-                document.getElementById('logs').innerHTML = '<div>Error loading logs</div>';
-            }
-        }
-        // Init
-        initMap();
-        populateTruckDropdowns();
-        fetchLogs();
-        setInterval(populateTruckDropdowns, 5000);
-        setInterval(fetchLogs, 3000);
+        // Initial load
+        updateDropdowns();
+        updateLogs();
+        setInterval(updateLogs, 4000);
+        setInterval(updateDropdowns, 8000);
     </script>
 </body>
-</html> 
+</html>

@@ -229,6 +229,85 @@ class EnhancedRescueLogic:
         }
         
         return log_entry
+    
+    def find_best_rescue_trucks(self, failed_truck: Dict, available_trucks: List[Dict], top_n: int = 2) -> List[Dict]:
+        """
+        Find the top N rescue trucks using 6-factor scoring
+        Returns a list of top N trucks sorted by score (descending)
+        """
+        scored_trucks = []
+        for truck in available_trucks:
+            if truck.get("status") == "RESCUING":
+                continue
+            score = self._calculate_rescue_score(failed_truck, truck)
+            truck_copy = truck.copy()
+            truck_copy["rescue_score"] = score
+            scored_trucks.append(truck_copy)
+        scored_trucks.sort(key=lambda t: t["rescue_score"], reverse=True)
+        return scored_trucks[:top_n]
+
+    def multi_truck_rescue(self, failed_truck: Dict, available_trucks: List[Dict], delivery_points: List[Dict]) -> Optional[Dict]:
+        """
+        Attempt multi-truck rescue if one truck cannot handle the full load.
+        Returns a dict with both rescuers, their routes, and load split.
+        """
+        # Filter out trucks with zero or negative capacity
+        filtered_trucks = [t for t in available_trucks if t.get("capacityAvailable", 0) > 0 and t.get("totalCapacity", 0) > 0]
+        # Assume failed_truck["load"] is the load to be rescued
+        failed_load = failed_truck.get("load", 100)
+        if failed_load <= 0:
+            return None  # Nothing to rescue
+        top_trucks = self.find_best_rescue_trucks(failed_truck, filtered_trucks, top_n=2)
+        if len(top_trucks) < 2:
+            return None  # Not enough trucks for multi-rescue
+        truck1, truck2 = top_trucks
+        cap1 = truck1.get("capacityAvailable", 0)
+        cap2 = truck2.get("capacityAvailable", 0)
+        if cap1 <= 0 or cap2 <= 0:
+            return None  # Both must have positive capacity
+        if cap1 + cap2 < failed_load:
+            # Not enough combined capacity
+            return None
+        # Split load (e.g., 60/40 or by capacity)
+        if cap1 >= 0.6 * failed_load:
+            load1 = int(0.6 * failed_load)
+            load2 = failed_load - load1
+        else:
+            # Split by available capacity
+            load1 = min(cap1, failed_load)
+            load2 = failed_load - load1
+        # Guard against division by zero in percent calculation
+        percent1 = int(100 * load1 / failed_load) if failed_load else 0
+        percent2 = int(100 * load2 / failed_load) if failed_load else 0
+        # Generate rescue routes
+        route1 = self.generate_rescue_route(truck1, failed_truck, delivery_points)
+        route2 = self.generate_rescue_route(truck2, failed_truck, delivery_points)
+        # Log multi-rescue event
+        logger.info(f"Multi-rescue initiated: {truck1['id']} + {truck2['id']}")
+        logger.info(f"{truck1['id']} collecting {load1} units ({percent1}%)")
+        logger.info(f"{truck2['id']} collecting {load2} units ({percent2}%)")
+        # Return structure for backend/frontend
+        return {
+            "multi_rescue": True,
+            "failed_truck_id": failed_truck["id"],
+            "rescuers": [
+                {
+                    "rescue_truck_id": truck1["id"],
+                    "truck": truck1,
+                    "route": route1,
+                    "load_share": load1,
+                    "load_percent": percent1
+                },
+                {
+                    "rescue_truck_id": truck2["id"],
+                    "truck": truck2,
+                    "route": route2,
+                    "load_share": load2,
+                    "load_percent": percent2
+                }
+            ],
+            "total_load": failed_load
+        }
 
 # Global instance
-enhanced_rescue_logic = EnhancedRescueLogic() 
+enhanced_rescue_logic = EnhancedRescueLogic()

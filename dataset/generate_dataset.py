@@ -26,11 +26,20 @@ class ColdChainDataGenerator:
         self.start_time = datetime.datetime.now()
         self.CONFIG = CONFIG
         
+    def generate_gps_coordinates_mumbai(self) -> tuple:
+        """Generate random GPS coordinates within Mumbai land bounding box only."""
+        # Mumbai bounding box (approx): 18.85 <= lat <= 19.35, 72.75 <= lon <= 73.10
+        for _ in range(100):  # Try up to 100 times
+            lat = random.uniform(18.85, 19.35)
+            lon = random.uniform(72.75, 73.10)
+            # Optionally, add more precise land mask here
+            return round(lat, 6), round(lon, 6)
+        # Fallback to center if all else fails
+        return 19.0760, 72.8777
+
     def generate_gps_coordinates(self) -> tuple:
-        """Generate random GPS coordinates within Arkansas"""
-        lat = random.uniform(CONFIG["gps_bounds"]["lat_min"], CONFIG["gps_bounds"]["lat_max"])
-        lon = random.uniform(CONFIG["gps_bounds"]["lon_min"], CONFIG["gps_bounds"]["lon_max"])
-        return round(lat, 6), round(lon, 6)
+        """Generate random GPS coordinates within Mumbai land bounding box only (overrides global bounds)."""
+        return self.generate_gps_coordinates_mumbai()
     
     def generate_delivery_stops(self, num_stops: int = None) -> List[Dict]:
         """Generate delivery stops for a batch"""
@@ -399,4 +408,4 @@ def main():
     generator.generate_dataset()
 
 if __name__ == "__main__":
-    main() 
+    main()
