@@ -53,16 +53,14 @@ A robust, scalable, and AI-driven cold chain rescue and monitoring system for Mu
 
 ## 🚦 Manual Failure Triggers UI
 
-Below is a screenshot of the Manual Failure Triggers panel, which allows you to simulate various truck failure scenarios for demo and testing purposes:
+The system provides a set of manual failure triggers for demo and testing. You can simulate the following failure scenarios directly from the UI:
 
-![Manual Failure Triggers](docs/manual_failure_triggers.png)
-
-- **Temperature Critical:** Cold chain breach > 10°C
-- **Battery Drain:** Power critical < 5%
-- **Engine Failure:** Mechanical breakdown
-- **GPS Signal Lost:** Communication error
-- **Refrigeration Unit:** Cooling system failure
-- **Route Blocked:** Traffic obstruction
+- **Temperature Critical**: Cold chain breach > 10°C
+- **Battery Drain**: Power critical < 5%
+- **Engine Failure**: Mechanical breakdown
+- **GPS Signal Lost**: Communication error
+- **Refrigeration Unit**: Cooling system failure
+- **Route Blocked**: Traffic obstruction
 
 ---
 
