@@ -290,22 +290,17 @@
                     fetch('/truck_status'),
                     fetch('/rescue_routes')
                 ]);
-                
                 const truckData = await trucksResponse.json();
                 const rescueData = await rescuesResponse.json();
-                
                 updateRescueDisplay(truckData, rescueData);
                 updateRescueMap(truckData, rescueData);
-                
                 const activeRescues = Object.keys(rescueData).length;
                 updateStatus(`🚑 Live rescue monitoring: ${activeRescues} active rescue operations`);
-                
             } catch (error) {
-                console.log('Using demo rescue data...');
-                const demoData = generateDemoRescueData();
-                updateRescueDisplay(demoData.trucks, demoData.rescues);
-                updateRescueMap(demoData.trucks, demoData.rescues);
-                updateStatus('📊 Demo rescue mode active');
+                // Remove demo data fallback: just show error
+                const list = document.getElementById('rescue-list');
+                if (list) list.innerHTML = '<div class="loading">❌ Error loading rescue data. Please check backend connection.</div>';
+                updateStatus('❌ Error loading rescue data');
             }
         }
         
@@ -314,15 +309,13 @@
             const list = document.getElementById('rescue-list');
             list.innerHTML = '';
             
-            // Show failed trucks and their rescues
-            const failedTrucks = trucks.filter(t => t.status === 'failed' || t.status === 'rescuing');
-            
-            if (failedTrucks.length === 0) {
+            // Show only trucks with status 'rescuing' or those with an active rescue route
+            const activeRescueTrucks = trucks.filter(t => t.status === 'rescuing' || rescues[t.truck_id]);
+            if (activeRescueTrucks.length === 0) {
                 list.innerHTML = '<div class="loading">✅ No active rescues - All operations normal</div>';
                 return;
             }
-            
-            failedTrucks.forEach(truck => {
+            activeRescueTrucks.forEach(truck => {
                 const rescue = rescues[truck.truck_id];
                 const rescueTruck = rescue ? trucks.find(t => t.truck_id === rescue.rescue_truck_id) : null;
                 
@@ -409,14 +402,17 @@
             });
         }
         
-        // Update rescue map - SHOW ONLY RESCUE OPERATIONS
+        // Helper: Check if a point is within Mumbai land bounding box
+        function isOnLand(lat, lng) {
+            return lat >= 18.85 && lat <= 19.35 && lng >= 72.75 && lng <= 73.10;
+        }
+
+        // Update rescue map - SHOW ONLY FAILED & RESCUING TRUCKS AND ROUTES
         function updateRescueMap(trucks, rescues) {
             if (!map) return;
-            
             // Clear existing markers and routes
             Object.values(markers).forEach(marker => map.removeLayer(marker));
             Object.values(routeLines).forEach(line => {
-                // Clear any animation intervals
                 if (line._animationInterval) {
                     clearInterval(line._animationInterval);
                 }
@@ -427,10 +423,7 @@
             
             // If no active rescues, clear map and show completion message
             if (Object.keys(rescues).length === 0) {
-                console.log('✅ No active rescues - all operations completed');
                 updateStatus('✅ All rescues completed! No active operations.');
-                
-                // Show temporary success message on map
                 const successPopup = L.popup({
                     closeButton: false,
                     autoClose: true,
@@ -439,151 +432,51 @@
                 .setLatLng([19.0760, 72.8777])
                 .setContent('<div style="text-align: center; color: #28a745; font-weight: bold;">✅ All Rescue Operations Completed Successfully!</div>')
                 .openOn(map);
-                
-                setTimeout(() => {
-                    map.closePopup(successPopup);
-                }, 3000);
-                
+                setTimeout(() => { map.closePopup(successPopup); }, 3000);
                 return;
             }
             
-            // For each active rescue, show failed truck, rescue truck, and route
+            // For each active rescue, show ONLY the failed truck, rescuing truck, and the rescue route
             Object.entries(rescues).forEach(([failedTruckId, rescue]) => {
-                const failedTruck = trucks.find(t => t.truck_id === failedTruckId);
-                const rescueTruck = trucks.find(t => t.truck_id === rescue.rescue_truck_id);
-                
-                // Calculate dynamic progress for this rescue
-                const progress = calculateRescueProgress(rescue, failedTruckId);
-                const priorityLevel = failedTruck?.failure_reason?.includes('Temperature') || failedTruck?.failure_reason?.includes('Cold Chain') ? 'CRITICAL' : 'STANDARD';
-                const priorityIcon = priorityLevel === 'CRITICAL' ? '🚨' : '⚠️';
-                const priorityColor = priorityLevel === 'CRITICAL' ? '#dc3545' : '#ffc107';
-                const estimatedCost = Math.round(rescue.distance_km * 12.5 + 450);
-                
-                // Show FAILED TRUCK (red marker with SOS animation)
-                if (failedTruck) {
+                const routeCoords = rescue.route && rescue.route.route_coordinates;
+                if (!routeCoords || routeCoords.length < 2) return;
+                // Place rescue truck marker at start of route
+                const rescueIcon = L.divIcon({
+                    className: 'rescue-marker',
+                    html: `<div style="background: linear-gradient(135deg, #ffc107 0%, #ff9800 100%); width: 45px; height: 45px; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: black; font-weight: bold; font-size: 20px; border: 4px solid white; box-shadow: 0 4px 15px rgba(255,193,7,0.7); animation: rescueMove 1.5s infinite ease-in-out;">🚑</div>`,
+                    iconSize: [45, 45],
+                    iconAnchor: [22, 22]
+                });
+                const rescueMarker = L.marker(routeCoords[0], { icon: rescueIcon }).addTo(map);
+                rescueMarker.bindPopup(`
+                    <div style="text-align: center; min-width: 300px;">
+                        <h4>🚑 Rescue Truck - RESCUE UNIT</h4>
+                        <div style="background: #fff3cd; padding: 0.5rem; border-radius: 4px; margin: 0.5rem 0; border-left: 4px solid #ffc107;">
+                            <strong>🎯 Target:</strong> ${failedTruckId}<br>
+                            <strong>⏱️ ETA:</strong> ${rescue.eta_minutes} min<br>
+                            <strong>📍 Distance:</strong> ${rescue.distance_km} km
+                        </div>
+                    </div>
+                `);
+                markers[`rescue_${rescue.rescue_truck_id}`] = rescueMarker;
+
+                // Place failed truck marker at end of route
                     const failedIcon = L.divIcon({
                         className: 'failed-marker',
-                        html: `<div style="
-                            background: #dc3545; 
-                            width: 40px; 
-                            height: 40px; 
-                            border-radius: 50%; 
-                            display: flex; 
-                            align-items: center; 
-                            justify-content: center; 
-                            color: white; 
-                            font-weight: bold; 
-                            font-size: 18px; 
-                            border: 3px solid white; 
-                            box-shadow: 0 3px 10px rgba(220,53,69,0.5);
-                            animation: sosFlash 1s infinite;
-                        ">🆘</div>`,
+                    html: `<div style="background: #dc3545; width: 40px; height: 40px; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: white; font-weight: bold; font-size: 18px; border: 3px solid white; box-shadow: 0 3px 10px rgba(220,53,69,0.5); animation: sosFlash 1s infinite;">🆘</div>`,
                         iconSize: [40, 40],
                         iconAnchor: [20, 20]
                     });
-                    
-                    const failedMarker = L.marker([failedTruck.location.lat, failedTruck.location.lng], { icon: failedIcon }).addTo(map);
+                const failedMarker = L.marker(routeCoords[routeCoords.length - 1], { icon: failedIcon }).addTo(map);
                     failedMarker.bindPopup(`
                         <div style="text-align: center;">
-                            <h4>🆘 ${failedTruck.truck_id} - FAILED</h4>
-                            <p><strong>Issue:</strong> ${failedTruck.failure_reason}</p>
-                            <p><strong>Temperature:</strong> ${failedTruck.temperature}°C</p>
-                            <p><strong>Battery:</strong> ${failedTruck.battery}%</p>
+                        <h4>🆘 ${failedTruckId} - FAILED</h4>
                             <p style="color: #dc3545;"><strong>AWAITING RESCUE</strong></p>
                         </div>
                     `);
                     markers[`failed_${failedTruckId}`] = failedMarker;
-                }
-                
-                // Show RESCUE TRUCK (yellow marker with rescue animation)  
-                if (rescueTruck) {
-                    const rescueIcon = L.divIcon({
-                        className: 'rescue-marker',
-                        html: `<div style="
-                            background: linear-gradient(135deg, #ffc107 0%, #ff9800 100%); 
-                            width: 45px; 
-                            height: 45px; 
-                            border-radius: 50%; 
-                            display: flex; 
-                            align-items: center; 
-                            justify-content: center; 
-                            color: black; 
-                            font-weight: bold; 
-                            font-size: 20px; 
-                            border: 4px solid white; 
-                            box-shadow: 0 4px 15px rgba(255,193,7,0.7);
-                            animation: rescueMove 1.5s infinite ease-in-out;
-                        ">🚑</div>`,
-                        iconSize: [45, 45],
-                        iconAnchor: [22, 22]
-                    });
-                    
-                    const rescueMarker = L.marker([rescueTruck.location.lat, rescueTruck.location.lng], { icon: rescueIcon }).addTo(map);
-                    
-                    // Enhanced rescue vehicle details with additional insights
-                    const reliability = rescueTruck.coldChainReliability || 95;
-                    const capacity = rescueTruck.capacityAvailable || 75;
-                    const batteryStatus = rescueTruck.battery > 80 ? '🟢 Excellent' : rescueTruck.battery > 50 ? '🟡 Good' : '🔴 Low';
-                    const tempStatus = rescueTruck.temperature < 8 ? '❄️ Optimal' : '⚠️ Monitoring';
-                    
-                    const fuelEfficiency = Math.round(8.5 + Math.random() * 3.2); // km/l
-                    const carbonFootprint = Math.round(rescue.distance_km * 2.3); // kg CO2
-                    
-                    // Simulated rescue performance metrics
-                    const successRate = Math.max(85, reliability - Math.random() * 10);
-                    const avgResponseTime = Math.round(rescue.eta_minutes * 0.85 + Math.random() * 8);
-                    const totalRescues = Math.floor(45 + Math.random() * 85); // Historical rescues
-                    
-                    rescueMarker.bindPopup(`
-                        <div style="text-align: center; min-width: 300px;">
-                            <h4>🚑 ${rescueTruck.truck_id} - RESCUE UNIT</h4>
-                            
-                            <div style="background: #fff3cd; padding: 0.5rem; border-radius: 4px; margin: 0.5rem 0; border-left: 4px solid ${priorityColor};">
-                                <strong>${priorityIcon} ${priorityLevel} PRIORITY RESCUE</strong><br>
-                                <strong>🎯 Target:</strong> ${failedTruckId} (${failedTruck.failure_reason})<br>
-                                <strong>⏱️ ETA:</strong> ${formatTimeRemaining(progress.timeRemaining)} (${progress.progressPercent}% complete)<br>
-                                <strong>📍 Distance:</strong> ${rescue.distance_km} km • ₹${estimatedCost} estimated cost
-                            </div>
-                            
-                            <div style="background: #e8f5e8; padding: 0.5rem; border-radius: 4px; margin: 0.5rem 0; text-align: left;">
-                                <strong>🔧 VEHICLE SPECIFICATIONS:</strong><br>
-                                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.2rem; font-size: 0.85rem;">
-                                    <div><strong>Battery:</strong> ${batteryStatus} (${rescueTruck.battery}%)</div>
-                                    <div><strong>Temperature:</strong> ${tempStatus} (${rescueTruck.temperature}°C)</div>
-                                    <div><strong>Reliability:</strong> ${reliability}%</div>
-                                    <div><strong>Capacity:</strong> ${capacity}% available</div>
-                                    <div><strong>Fuel Efficiency:</strong> ${fuelEfficiency} km/l</div>
-                                    <div><strong>Carbon Impact:</strong> ${carbonFootprint} kg CO₂</div>
-                                </div>
-                            </div>
-                            
-                            <div style="background: #f8f9fa; padding: 0.5rem; border-radius: 4px; margin: 0.5rem 0; text-align: left;">
-                                <strong>📊 PERFORMANCE HISTORY:</strong><br>
-                                <div style="font-size: 0.85rem;">
-                                    <strong>Success Rate:</strong> ${successRate.toFixed(1)}% (${totalRescues} total rescues)<br>
-                                    <strong>Avg Response:</strong> ${avgResponseTime} minutes<br>
-                                    <strong>Last Rescue:</strong> ${Math.floor(Math.random() * 48)} hours ago • <strong>Elapsed:</strong> ${progress.elapsedMinutes} min
-                                </div>
-                            </div>
-                            
-                            <div style="background: linear-gradient(90deg, #28a745 ${progress.progressPercent}%, #e9ecef ${progress.progressPercent}%); height: 8px; border-radius: 4px; margin: 0.5rem 0;"></div>
-                            
-                            <div style="color: #28a745; font-weight: bold; margin-top: 0.5rem;">
-                                ✅ OPTIMAL RESCUE VEHICLE SELECTED
-                            </div>
-                            <small style="color: #6c757d;">AI Algorithm: Distance, Battery, Capacity, Reliability, Availability, Traffic</small>
-                        </div>
-                    `);
-                    markers[`rescue_${rescue.rescue_truck_id}`] = rescueMarker;
-                }
-                
-                // Show RESCUE ROUTE (yellow dashed line between them)
-                if (failedTruck && rescueTruck) {
-                    const routeCoords = [
-                        [rescueTruck.location.lat, rescueTruck.location.lng],  // Start: Rescue truck
-                        [failedTruck.location.lat, failedTruck.location.lng]   // End: Failed truck
-                    ];
-                    
+
+                // Draw the rescue route
                     const routeLine = L.polyline(routeCoords, {
                         color: '#ffc107',
                         weight: 8,
@@ -592,77 +485,27 @@
                         dashOffset: '0',
                         lineCap: 'round'
                     }).addTo(map);
-                    
-                    // Variables for route popup
-                    const fuelEfficiency = Math.round(8.5 + Math.random() * 3.2);
-                    const carbonFootprint = Math.round(rescue.distance_km * 2.3);
-                    
-                    // Animate the dashed line to show movement
                     let offset = 0;
                     const animateRoute = setInterval(() => {
                         offset = (offset + 2) % 30;
                         routeLine.setStyle({ dashOffset: offset + 'px' });
                     }, 80);
-                    
-                    // Store animation interval to clear later
                     routeLine._animationInterval = animateRoute;
-                    
                     routeLines[failedTruckId] = routeLine;
                     
-                    // Route popup with enhanced rescue analytics
-                    routeLine.bindPopup(`
-                        <div style="text-align: center; min-width: 280px;">
-                            <h4>🚑➡️🆘 ACTIVE RESCUE ROUTE</h4>
-                            
-                            <div style="background: #fff3cd; padding: 0.5rem; border-radius: 4px; margin: 0.5rem 0;">
-                                <strong>Rescue Operation:</strong> ${rescue.rescue_truck_id} → ${failedTruckId}<br>
-                                <strong>Priority:</strong> <span style="color: ${priorityColor}">${priorityIcon} ${priorityLevel}</span><br>
-                                <strong>Progress:</strong> <span style="color: #28a745">${progress.progressPercent}% complete</span>
-                            </div>
-                            
-                            <div style="background: #e8f5e8; padding: 0.5rem; border-radius: 4px; margin: 0.5rem 0; text-align: left;">
-                                <strong>📊 ROUTE OPTIMIZATION:</strong><br>
-                                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.2rem; font-size: 0.85rem;">
-                                    <div><strong>ETA:</strong> ${formatTimeRemaining(progress.timeRemaining)}</div>
-                                    <div><strong>Distance:</strong> ${rescue.distance_km} km</div>
-                                    <div><strong>Cost:</strong> ₹${estimatedCost}</div>
-                                    <div><strong>Fuel:</strong> ${fuelEfficiency} km/l</div>
-                                    <div><strong>CO₂:</strong> ${carbonFootprint} kg</div>
-                                    <div><strong>Elapsed:</strong> ${progress.elapsedMinutes} min</div>
-                                </div>
-                            </div>
-                            
-                            <div style="background: linear-gradient(90deg, #28a745 ${progress.progressPercent}%, #e9ecef ${progress.progressPercent}%); height: 6px; border-radius: 3px; margin: 0.5rem 0;"></div>
-                            
-                            <div style="color: #28a745; font-weight: bold;">
-                                🎯 AI-OPTIMIZED RESCUE PATH
-                            </div>
-                            <small style="color: #6c757d;">
-                                Fastest • Safest • Most Cost-Effective<br>
-                                Real-time traffic & weather optimization
-                            </small>
-                        </div>
-                    `);
-                    
-                    // Add arrow markers along the route to show direction
-                    const midLat = (rescueTruck.location.lat + failedTruck.location.lat) / 2;
-                    const midLng = (rescueTruck.location.lng + failedTruck.location.lng) / 2;
-                    
+                // Add arrow marker along the route
+                const p0 = routeCoords[0];
+                const p1 = routeCoords[routeCoords.length - 1];
+                const midLat = p0[0] + 0.5 * (p1[0] - p0[0]);
+                const midLng = p0[1] + 0.5 * (p1[1] - p0[1]);
                     const arrowIcon = L.divIcon({
                         className: 'route-arrow',
-                        html: `<div style="
-                            color: #ffc107; 
-                            font-size: 24px; 
-                            text-shadow: 2px 2px 4px rgba(0,0,0,0.5);
-                            animation: arrowPulse 1s infinite ease-in-out;
-                        ">➤</div>`,
+                    html: `<div style="color: #ffc107; font-size: 24px; text-shadow: 2px 2px 4px rgba(0,0,0,0.5); animation: arrowPulse 1s infinite ease-in-out;">➤</div>`,
                         iconSize: [24, 24],
                         iconAnchor: [12, 12]
                     });
-                    
                     const arrowMarker = L.marker([midLat, midLng], { icon: arrowIcon }).addTo(map);
                     markers[`arrow_${failedTruckId}`] = arrowMarker;
-                }
             });
         }
         

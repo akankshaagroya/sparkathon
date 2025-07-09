@@ -195,6 +195,7 @@
                 <button class="btn btn-danger" onclick="triggerFailure()">⚠️ Demo Failure</button>
                 <button class="btn btn-success" onclick="openRescueView()">🚑 View Rescues</button>
                 <button class="btn btn-primary" onclick="refreshMap()">🔄 Refresh</button>
+                <button class="btn btn-primary" onclick="window.open('/admin_override', '_blank')">🛠️ Admin Override</button>
             </div>
             
             <div class="legend">
@@ -383,29 +384,29 @@
             }
         }
         
-        // Fetch live truck data
+        // Fetch live truck data and rescue routes
         async function fetchTruckData() {
             try {
-                const response = await fetch('/truck_status');
-                const truckData = await response.json();
-                
+                const [trucksResponse, rescuesResponse] = await Promise.all([
+                    fetch('/truck_status'),
+                    fetch('/rescue_routes')
+                ]);
+                const truckData = await trucksResponse.json();
+                const rescueData = await rescuesResponse.json();
                 updateTruckDisplay(truckData);
-                updateMapMarkers(truckData);
+                updateMapMarkers(truckData, rescueData);
                 updateRouteLegend(truckData); // 🎨 Update route color legend
-                
                 // Check for failures
                 const failed = truckData.filter(t => t.status === 'failed');
                 if (failed.length > 0) {
                     showFailureAlert(failed);
                 }
-                
                 updateStatus(`🟢 Live: ${truckData.length} trucks | Operational: ${truckData.filter(t => t.status === 'operational').length} | Failed: ${failed.length}`);
-                
             } catch (error) {
                 console.log('Using demo data...');
                 const demoData = generateDemoData();
                 updateTruckDisplay(demoData);
-                updateMapMarkers(demoData);
+                updateMapMarkers(demoData, {});
                 updateRouteLegend(demoData); // 🎨 Update route color legend for demo
                 updateStatus('📊 Demo mode active');
             }
@@ -446,45 +447,78 @@
             
             trucks.forEach(truck => {
                 const deliveries = calculateDeliveries(truck);
+                const hasPredictiveAlert = truck.predictive_temp_alert || truck.predictive_battery_alert;
+                // Add click handler for badge
+                const badge = hasPredictiveAlert ? `<span class="predictive-badge" style=\"background: orange; color: white; font-size: 0.75rem; font-weight: bold; border-radius: 6px; padding: 2px 8px; margin-left: 8px; vertical-align: middle; cursor: pointer;\">🟠 PREDICTIVE ALERT</span>` : '';
                 const item = document.createElement('div');
                 item.className = `truck-item ${truck.status}`;
                 item.innerHTML = `
-                    <div class="truck-id">🚛 ${truck.truck_id}</div>
+                    <div class="truck-id">🚛 ${truck.truck_id} ${badge}</div>
                     <div class="truck-stats">
                         Status: <strong>${truck.status.toUpperCase()}</strong><br>
                         🌡️ ${truck.temperature}°C | 🔋 ${truck.battery}%<br>
                         📦 ${deliveries} deliveries scheduled
-                        ${truck.failure_reason ? `<br><span style="color: #dc3545;">⚠️ ${truck.failure_reason}</span>` : ''}
+                        ${truck.failure_reason ? `<br><span style=\"color: #dc3545;\">⚠️ ${truck.failure_reason}</span>` : ''}
                     </div>
                 `;
                 list.appendChild(item);
+                // Add click event for predictive badge
+                if (hasPredictiveAlert) {
+                    const badgeElem = item.querySelector('.predictive-badge');
+                    if (badgeElem) {
+                        badgeElem.addEventListener('click', function(e) {
+                            e.stopPropagation();
+                            alert('Reason: Temperature rising fast (demo mode)');
+                        });
+                    }
+                }
             });
         }
         
         // Update map markers - SHOW ROUTES & TRUCKS WITH MAGIC! ✨
-        function updateMapMarkers(trucks) {
+        function updateMapMarkers(trucks, rescueRoutes) {
             if (!map) return;
-            
             // Clear existing markers and routes
             Object.values(markers).forEach(marker => map.removeLayer(marker));
             Object.values(routeLines).forEach(item => {
                 if (Array.isArray(item)) {
-                    // Handle waypoint arrays
                     item.forEach(waypoint => map.removeLayer(waypoint));
                 } else {
-                    // Handle route lines
                     map.removeLayer(item);
                 }
             });
             markers = {};
             routeLines = {};
-            
             // Show only operational and failed trucks (not rescuing ones)
             trucks.filter(truck => truck.status !== 'rescuing').forEach(truck => {
                 const color = truck.status === 'operational' ? '#28a745' : '#dc3545';
                 const isOperational = truck.status === 'operational';
-                
-                // 🎨 MAGICAL TRUCK MARKER
+                // 🎨 MAGICAL TRUCK MARKER (now placed 10% along the route if available)
+                let markerLatLng = [truck.location.lat, truck.location.lng];
+                let routeToShow = truck.intended_route;
+                let usedRescueRoute = false;
+                // If this truck is a rescue truck in an active rescue, use the rescue route
+                for (const [failedId, rescue] of Object.entries(rescueRoutes)) {
+                    if (rescue.rescue_truck_id === truck.truck_id && rescue.route && rescue.route.length > 1) {
+                        routeToShow = rescue.route;
+                        // Place marker 10% along the rescue route
+                        const p0 = routeToShow[0];
+                        const p1 = routeToShow[1];
+                        const lat = p0[0] + 0.1 * (p1[0] - p0[0]);
+                        const lng = p0[1] + 0.1 * (p1[1] - p0[1]);
+                        markerLatLng = [lat, lng];
+                        usedRescueRoute = true;
+                        break;
+                    }
+                }
+                if (isOperational && routeToShow && routeToShow.length > 1 && !usedRescueRoute) {
+                    // If not a rescue truck, use normal route for marker
+                    const p0 = routeToShow[0];
+                    const p1 = routeToShow[1];
+                    const lat = p0[0] + 0.1 * (p1[0] - p0[0]);
+                    const lng = p0[1] + 0.1 * (p1[1] - p0[1]);
+                    markerLatLng = [lat, lng];
+                }
                 const icon = L.divIcon({
                     className: 'truck-marker',
                     html: `<div style="
@@ -505,33 +539,12 @@
                     iconSize: [truck.status === 'failed' ? 35 : 30, truck.status === 'failed' ? 35 : 30],
                     iconAnchor: [truck.status === 'failed' ? 17 : 15, truck.status === 'failed' ? 17 : 15]
                 });
-                
-                const marker = L.marker([truck.location.lat, truck.location.lng], { icon }).addTo(map);
-                
-                // 💫 ENHANCED POPUP WITH STATUS GLOW
-                marker.bindPopup(`
-                    <div style="text-align: center; padding: 0.5rem;">
-                        <h4 style="color: ${color};">🚛 ${truck.truck_id}</h4>
-                        <div style="background: ${color}; color: white; padding: 0.25rem; border-radius: 4px; margin: 0.5rem 0;">
-                            <strong>Status: ${truck.status.toUpperCase()}</strong>
-                        </div>
-                        <p><strong>🌡️ Temperature:</strong> <span style="color: ${truck.temperature > 8 ? '#dc3545' : '#28a745'}">${truck.temperature}°C</span></p>
-                        <p><strong>🔋 Battery:</strong> <span style="color: ${truck.battery < 20 ? '#dc3545' : '#28a745'}">${truck.battery}%</span></p>
-                        ${truck.failure_reason ? `<div style="color: #dc3545; font-weight: bold; margin-top: 0.5rem; padding: 0.25rem; background: #fdf2f2; border-radius: 4px;">⚠️ ${truck.failure_reason}</div>` : ''}
-                        ${isOperational ? '<div style="color: #28a745; font-size: 0.8rem; margin-top: 0.5rem;">✅ Following delivery route</div>' : ''}
-                    </div>
-                `);
-                
+                const marker = L.marker(markerLatLng, { icon }).addTo(map);
                 markers[truck.truck_id] = marker;
-                
-                // 🌟 MAGICAL ROUTE VISUALIZATION FOR OPERATIONAL TRUCKS
-                if (isOperational && truck.intended_route && truck.intended_route.length > 1) {
-                    // Get unique color for this truck's route
+                // 🌟 ROUTE VISUALIZATION
+                if (isOperational && routeToShow && routeToShow.length > 1) {
                     const routeColor = getTruckRouteColor(truck.truck_id, trucks);
-                    console.log(`🚛 Creating route for ${truck.truck_id} with color ${routeColor}`);
-                    
-                    // Create beautiful animated route line with unique color
-                    const routeLine = L.polyline(truck.intended_route, {
+                    const routeLine = L.polyline(routeToShow, {
                         color: routeColor,
                         weight: 4,
                         opacity: 0.8,
@@ -540,15 +553,11 @@
                         lineCap: 'round',
                         lineJoin: 'round'
                     }).addTo(map);
-                    
-                    console.log(`✅ Route line created for ${truck.truck_id} - Color: ${routeColor}, Points: ${truck.intended_route.length}`);
-                    
-                    // Add route popup with delivery info
                     routeLine.bindPopup(`
                         <div style="text-align: center;">
                             <h4 style="color: ${routeColor};">📍 ${truck.truck_id} Delivery Route</h4>
                             <div style="background: ${routeColor}20; padding: 0.5rem; border-radius: 4px; margin: 0.5rem 0; border-left: 4px solid ${routeColor};">
-                                <p><strong>Route Points:</strong> ${truck.intended_route.length}</p>
+                                <p><strong>Route Points:</strong> ${routeToShow.length}</p>
                                 <p><strong>Status:</strong> <span style="color: #28a745;">Active Delivery</span></p>
                                 <p><strong>Route Color:</strong> <span style="color: ${routeColor}; font-weight: bold;">${routeColor}</span></p>
                             </div>
@@ -557,12 +566,10 @@
                             </div>
                         </div>
                     `);
-                    
                     routeLines[truck.truck_id] = routeLine;
-                    
                     // 🎯 ADD DELIVERY WAYPOINTS WITH MATCHING COLORS
-                    truck.intended_route.forEach((point, index) => {
-                        if (index > 0) { // Skip first point (current location)
+                    routeToShow.forEach((point, index) => {
+                        if (index > 0) {
                             const waypointIcon = L.divIcon({
                                 className: 'waypoint-marker',
                                 html: `<div style="
@@ -577,19 +584,7 @@
                                 iconSize: [12, 12],
                                 iconAnchor: [6, 6]
                             });
-                            
                             const waypointMarker = L.marker([point[0], point[1]], { icon: waypointIcon }).addTo(map);
-                            waypointMarker.bindPopup(`
-                                <div style="text-align: center;">
-                                    <h4 style="color: ${routeColor};">📍 Delivery Point ${index}</h4>
-                                    <div style="background: ${routeColor}20; padding: 0.5rem; border-radius: 4px; margin: 0.5rem 0; border-left: 4px solid ${routeColor};">
-                                        <p><strong>Truck:</strong> ${truck.truck_id}</p>
-                                        <p><strong>Coordinates:</strong> ${point[0].toFixed(4)}, ${point[1].toFixed(4)}</p>
-                                        <p><strong>Route:</strong> <span style="color: ${routeColor}; font-weight: bold;">● Delivery Path</span></p>
-                                    </div>
-                                </div>
-                            `);
-                            
                             // Store waypoint with route for cleanup
                             if (!routeLines[truck.truck_id + '_waypoints']) {
                                 routeLines[truck.truck_id + '_waypoints'] = [];
@@ -676,6 +671,9 @@
             } catch (error) {
                 addLog('🔧 Demo mode - simulating failure');
             }
+            // After triggering failure, refresh truck data and logs
+            setTimeout(fetchTruckData, 1000);
+            setTimeout(fetchLogs, 1000);
         }
         
         // Open rescue view
